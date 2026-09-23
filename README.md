@@ -1,11 +1,13 @@
 # Foundry Agent Observability Starter Kit
 
-A deployable Application Insights starter kit for monitoring **Microsoft Foundry prompt agents**. It provisions (or reuses) Azure Monitor resources and installs two ready-to-use Azure Workbooks built entirely on the [OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) that Foundry emits:
+A deployable observability kit for **Microsoft Foundry prompt agents and model deployments**. By default it provisions (or reuses) Azure Monitor resources and installs two agent workbooks built on [OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/):
 
 - **Platform/Dev workbook** — agent runs, model/tool calls, token usage, latency, and reliability.
 - **Governance workbook** — attribution ("who ran what"), access trail, and anomaly flags.
 
 Both workbooks read the GenAI spans Foundry writes to Application Insights (`invoke_agent`, `chat`, `execute_tool`) from the `dependencies` table — no custom instrumentation required beyond connecting Foundry to Application Insights.
+
+Two optional **model-only** workbooks use the Foundry account's Azure Monitor metrics directly, without agent spans or diagnostic logs: **Model Fleet & Usage** and **Model Inference Health**. They cover deployments across Azure OpenAI, Fireworks, and other providers where those metrics are populated.
 
 ## Why Application Insights for agent observability?
 
@@ -67,6 +69,25 @@ azd up
 
 `azd` reads parameter values from [infra/main.parameters.json](infra/main.parameters.json), which maps to the environment variables documented in [.azure/.env.example](.azure/.env.example).
 
+### Add model-only workbooks
+
+Pass the full **Foundry account** resource ID to the standalone model workbook module. No Application Insights resource, Log Analytics workspace, or agent deployment is needed:
+
+```powershell
+$modelId = az resource show --resource-group "<your-rg>" `
+  --resource-type "Microsoft.CognitiveServices/accounts" `
+  --name "<your-foundry-account>" --query id -o tsv
+
+az deployment group create `
+  --resource-group "<your-rg>" `
+  --template-file "infra/model-workbooks.bicep" `
+  --parameters modelAccountResourceId="$modelId"
+```
+
+Find the model workbooks in **Azure portal → Monitor → Workbooks → Saved workbooks**; select the deployment subscription and resource group. Both model workbooks have a Foundry resource picker that defaults to the account specified at deployment; their charts and tables follow the selection. The picker lists accessible Azure AI Services and Azure OpenAI accounts from the portal's default subscriptions through Azure Resource Graph; select an account with model metrics and permission to read Azure Monitor metrics. The account can be in another resource group; the workbook resources themselves are deployed to the chosen resource group. The account ID placeholder in each JSON definition is populated by Bicep at deployment time. This module does **not** enable diagnostic settings or create model inference traffic. Alternatively, pass `modelAccountResourceId` to `infra/main.bicep` to install these alongside the original agent workbooks. If omitted there, only the original agent workbooks are deployed. Readers need permission to read Azure Monitor metrics on the selected Foundry account.
+
+Metrics are collected automatically, but only populated signals appear. Model Fleet & Usage plots total tokens over time by deployment and shows one row per deployment with input and output token totals for the selected range. Its table reads account metrics through Azure Resource Manager and merges on deployment name; it does not require diagnostic export. Blank output cells mean no reported output token samples, not zero. Inference Health plots HTTP response status, reported availability, gateway time to response, and request volume. Its status summary shows HTTP status codes as columns and request counts as values across the selected resource; a separate deployment-detail table provides individual status counts per model deployment. Statuses without reported samples may be omitted or have blank cells, not measured zeroes. Availability excludes client errors and throttling, while time to response primarily applies to streaming PTU workloads. Neither missing metrics nor a blank status series establish perfect health. For request-level logs, configure diagnostic settings separately and account for Log Analytics ingestion costs. Token totals are usage indicators, not actual billed cost; use Azure Cost Analysis for charges. See [Monitor model deployments in Microsoft Foundry Models](https://learn.microsoft.com/azure/foundry/foundry-models/how-to/monitor-models) and [Azure Workbooks data sources](https://learn.microsoft.com/azure/azure-monitor/visualize/workbooks-data-sources).
+
 ## Deployment outputs
 
 Both paths return:
@@ -75,6 +96,7 @@ Both paths return:
 - `appInsightsResourceId`
 - `platformDevWorkbookResourceId`
 - `governanceWorkbookResourceId`
+- `modelFleetWorkbookResourceId`, `modelHealthWorkbookResourceId` (empty when model workbooks are not enabled)
 
 Open either workbook from **Application Insights → Workbooks**, or directly by resource ID.
 

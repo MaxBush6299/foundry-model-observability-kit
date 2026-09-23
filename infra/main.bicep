@@ -18,6 +18,9 @@ param existingApplicationInsightsName string = ''
 @description('Name of the Azure OpenAI/Cognitive Services account in this resource group for diagnostics.')
 param cognitiveServicesAccountName string = ''
 
+@description('Optional Foundry account resource ID for model-only metric workbooks. Does not enable diagnostics.')
+param modelAccountResourceId string = ''
+
 @description('Minimum retention days for operational signals. Must be a value Application Insights accepts.')
 @allowed([
   30
@@ -74,7 +77,19 @@ module workbooks './workbooks.bicep' = {
   }
 }
 
+module modelWorkbooks './model-workbooks.bicep' = if (!empty(modelAccountResourceId)) {
+  name: 'model-workbooks'
+  params: {
+    location: location
+    modelAccountResourceId: modelAccountResourceId
+    sharedViewerPrincipalObjectIds: sharedViewerPrincipalObjectIds
+    sharedViewerPrincipalType: sharedViewerPrincipalType
+  }
+}
+
 output workspaceResourceId string = monitoring.outputs.workspaceResourceId
 output appInsightsResourceId string = monitoring.outputs.appInsightsResourceId
 output platformDevWorkbookResourceId string = workbooks.outputs.platformDevWorkbookResourceId
 output governanceWorkbookResourceId string = workbooks.outputs.governanceWorkbookResourceId
+output modelFleetWorkbookResourceId string = !empty(modelAccountResourceId) ? modelWorkbooks!.outputs.modelFleetWorkbookResourceId : ''
+output modelHealthWorkbookResourceId string = !empty(modelAccountResourceId) ? modelWorkbooks!.outputs.modelHealthWorkbookResourceId : ''

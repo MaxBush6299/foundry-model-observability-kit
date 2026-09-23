@@ -1,0 +1,166 @@
+{
+  "version": "Notebook/1.0",
+  "isLocked": false,
+  "fallbackResourceIds": [ "__MODEL_ACCOUNT_RESOURCE_ID__" ],
+  "items": [
+    {
+      "type": 1,
+      "name": "intro",
+      "content": {
+        "json": "## Foundry Model Fleet & Usage\nAzure Monitor model metrics from the selected Foundry account. Choose a Foundry resource and time range. Blank values mean no reported samples, not zero usage. Token counts are **not billed cost**."
+      }
+    },
+    {
+      "type": 9,
+      "name": "parameters",
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "crossComponentResources": [ "value::selected" ],
+        "parameters": [
+          {
+            "id": "fleet-resource",
+            "version": "KqlParameterItem/1.0",
+            "name": "FoundryResource",
+            "label": "Foundry resource",
+            "type": 5,
+            "isRequired": true,
+            "query": "resources | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | project value = id, label = name, selected = id =~ '__MODEL_ACCOUNT_RESOURCE_ID__', group = resourceGroup",
+            "crossComponentResources": [ "value::selected" ],
+            "typeSettings": { "additionalResourceOptions": [] },
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources"
+          },
+          {
+            "id": "fleet-time",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 604800000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 3600000 },
+                { "durationMs": 86400000 },
+                { "durationMs": 604800000 },
+                { "durationMs": 2592000000 }
+              ]
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 1,
+        "resourceType": "microsoft.resourcegraph/resources"
+      }
+    },
+    {
+      "type": 1,
+      "name": "trend-label",
+      "content": { "json": "### Token usage over time\nTotal tokens per deployment, summed within each chart interval. Embeddings and provider-specific models may report different token signals." }
+    },
+    {
+      "type": 10,
+      "name": "token-trend",
+      "content": {
+        "chartId": "model-fleet-token-trend",
+        "version": "MetricsItem/2.0",
+        "size": 0,
+        "chartType": 2,
+        "resourceIds": [ "{FoundryResource}" ],
+        "timeContextFromParameter": "TimeRange",
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--TotalTokens",
+            "aggregation": 1,
+            "splitBy": "ModelDeploymentName"
+          }
+        ]
+      }
+    },
+    {
+      "type": 1,
+      "name": "mix-label",
+      "content": { "json": "### Tokens by deployment\nInput and output token totals for the selected range. A blank output value means that deployment did not report output tokens; embedding deployments commonly report input only. For charges, use Azure Cost Analysis." }
+    },
+    {
+      "type": 3,
+      "name": "token-input-source",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"InputTokens\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"FULL\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '*'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[*]\",\"columns\":[{\"path\":\"$.metadatavalues[0].value\",\"columnid\":\"Deployment\",\"columnType\":\"string\"},{\"path\":\"$.data[0].total\",\"columnid\":\"Input tokens\",\"columnType\":\"long\"}]}}]}",
+        "size": 0,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 12
+      },
+      "conditionalVisibility": {
+        "parameterName": "TimeRange",
+        "comparison": "isEqualTo",
+        "value": "source-only"
+      }
+    },
+    {
+      "type": 3,
+      "name": "token-output-source",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"OutputTokens\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"FULL\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '*'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[*]\",\"columns\":[{\"path\":\"$.metadatavalues[0].value\",\"columnid\":\"Output deployment\",\"columnType\":\"string\"},{\"path\":\"$.data[0].total\",\"columnid\":\"Output tokens\",\"columnType\":\"long\"}]}}]}",
+        "size": 0,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 12
+      },
+      "conditionalVisibility": {
+        "parameterName": "TimeRange",
+        "comparison": "isEqualTo",
+        "value": "source-only"
+      }
+    },
+    {
+      "type": 3,
+      "name": "token-mix",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "{\"version\":\"Merge/1.0\",\"merges\":[{\"id\":\"b4b85e25-24eb-44bb-9de2-34c93e9030e3\",\"mergeType\":\"leftouter\",\"leftTable\":\"token-input-source\",\"rightTable\":\"token-output-source\",\"leftColumn\":\"Deployment\",\"rightColumn\":\"Output deployment\"}],\"projectRename\":[{\"originalName\":\"[token-input-source].Deployment\",\"mergedName\":\"Deployment\",\"fromId\":\"b4b85e25-24eb-44bb-9de2-34c93e9030e3\"},{\"originalName\":\"[token-input-source].Input tokens\",\"mergedName\":\"Input tokens\",\"fromId\":\"b4b85e25-24eb-44bb-9de2-34c93e9030e3\"},{\"originalName\":\"[token-output-source].Output tokens\",\"mergedName\":\"Output tokens\",\"fromId\":\"b4b85e25-24eb-44bb-9de2-34c93e9030e3\"}]}",
+        "size": 0,
+        "queryType": 7,
+        "visualization": "grid",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Output deployment",
+              "formatter": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": 1,
+      "name": "requests-label",
+      "content": { "json": "### Requests by deployment\nAll responses, including failures. Use Inference Health for status-code breakdowns." }
+    },
+    {
+      "type": 10,
+      "name": "requests",
+      "content": {
+        "chartId": "model-fleet-requests",
+        "version": "MetricsItem/2.0",
+        "size": 0,
+        "chartType": 0,
+        "resourceIds": [ "{FoundryResource}" ],
+        "timeContextFromParameter": "TimeRange",
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelRequests",
+            "aggregation": 1,
+            "splitBy": "ModelDeploymentName"
+          }
+        ]
+      }
+    }
+  ]
+}
