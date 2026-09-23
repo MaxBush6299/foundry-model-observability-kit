@@ -1,4 +1,4 @@
-# Foundry Agent Observability Starter Kit
+# Foundry Observability Kit
 
 A deployable observability kit for **Microsoft Foundry prompt agents and model deployments**. By default it provisions (or reuses) Azure Monitor resources and installs two agent workbooks built on [OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/):
 
@@ -22,12 +22,12 @@ In short: if your agents run in Foundry, their observability data already lives 
 
 ## Prerequisites
 
-1. An Azure subscription with permission to create resource-group–scoped resources (and to assign roles if you use the optional shared-viewer feature).
-2. [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) and [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd), authenticated (`az login`, `azd auth login`).
-3. **A Foundry project connected to Application Insights**, with agents that have run at least once. This is the key data prerequisite — without it the workbooks render but stay empty. Follow [Set up tracing in Microsoft Foundry](https://learn.microsoft.com/azure/foundry/observability/how-to/trace-agent-setup#connect-application-insights-to-your-foundry-project).
-4. To query telemetry you need the [Log Analytics Reader role](https://learn.microsoft.com/azure/azure-monitor/logs/manage-access?tabs=portal#log-analytics-reader) on the connected Application Insights resource.
+1. An Azure subscription with permission to create resource-group-scoped resources (and to assign roles if you use the optional shared-viewer feature).
+2. [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), authenticated with `az login`. [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) and `azd auth login` are needed only for Option B below.
+3. **For agent workbooks:** a Foundry project connected to Application Insights, with agents that have run at least once. Without agent traces, these workbooks stay empty. Follow [Set up tracing in Microsoft Foundry](https://learn.microsoft.com/azure/foundry/observability/how-to/trace-agent-setup#connect-application-insights-to-your-foundry-project). Readers need the [Log Analytics Reader role](https://learn.microsoft.com/azure/azure-monitor/logs/manage-access?tabs=portal#log-analytics-reader) on the connected Application Insights resource.
+4. **For model-only workbooks:** a Foundry account with model deployments and Azure Monitor model metrics. Readers need permission to read metrics on the selected account. Application Insights, Log Analytics, agent traces, and `azd` are not required for the standalone model-only deployment.
 
-> The kit does not generate agent traffic. It visualizes the `gen_ai.*` spans your Foundry agents already emit.
+> The kit does not generate agent or model traffic. Empty charts can mean no metric samples in the selected time range.
 
 ## Deploy
 
@@ -90,7 +90,7 @@ Metrics are collected automatically, but only populated signals appear. Model Fl
 
 ## Deployment outputs
 
-Both paths return:
+Deployments through `infra/main.bicep` return:
 
 - `workspaceResourceId`
 - `appInsightsResourceId`
@@ -98,9 +98,11 @@ Both paths return:
 - `governanceWorkbookResourceId`
 - `modelFleetWorkbookResourceId`, `modelHealthWorkbookResourceId` (empty when model workbooks are not enabled)
 
-Open either workbook from **Application Insights → Workbooks**, or directly by resource ID.
+The standalone `infra/model-workbooks.bicep` deployment returns only `modelFleetWorkbookResourceId` and `modelHealthWorkbookResourceId`. Open agent workbooks from **Application Insights → Workbooks**; find model workbooks under **Azure Monitor → Workbooks → Saved workbooks**, or open any workbook directly by resource ID.
 
 ## What you'll see
+
+**Agent workbooks** (Application Insights):
 
 | Section | Signal |
 | --- | --- |
@@ -111,11 +113,18 @@ Open either workbook from **Application Insights → Workbooks**, or directly by
 | Performance | Agent run p50/p95 latency, model latency over time |
 | Reliability | Errors by agent, failed dependencies, exceptions |
 
-Use the **TimeRange** pills at the top to rescope every tile.
+**Model workbooks** (Foundry account metrics):
+
+| Workbook | Signal |
+| --- | --- |
+| Model Fleet & Usage | Token usage over time by deployment; input and output token counts in one deployment table; request volume by deployment |
+| Model Inference Health | HTTP response trend; account-wide request counts with HTTP statuses as columns; per-deployment status counts; availability, response time, and request-volume trends |
+
+Use the **Foundry resource** and **TimeRange** pickers in the model workbooks to change the account and time range. The HTTP-status column grid aggregates all deployments; the separate detail table shows deployment-specific counts. A missing metric or blank cell is not proof of zero usage or perfect health.
 
 ### Screenshots
 
-Live workbooks reading real Foundry `gen_ai.*` telemetry from Application Insights.
+**Agent workbooks** reading Foundry `gen_ai.*` telemetry from Application Insights:
 
 **Platform/Dev workbook** — summary KPIs and per-agent activity:
 
@@ -128,6 +137,20 @@ Live workbooks reading real Foundry `gen_ai.*` telemetry from Application Insigh
 **Governance workbook** — attribution ("who ran what") and access trail, with a working TimeRange picker:
 
 ![Governance workbook: who ran what and access trail](docs/images/governance-overview.png)
+
+**Model workbooks** reading Azure Monitor metrics from demo Foundry model deployments (the account label in the status summary is anonymized):
+
+**Model Fleet & Usage** — token trend and input/output totals by deployment:
+
+![Model Fleet and Usage workbook: token trend and deployment token table](docs/images/model-fleet-overview.png)
+
+**Model Inference Health** — HTTP response trend and account-wide status columns:
+
+![Model Inference Health workbook: HTTP response trend and status-count columns](docs/images/model-health-overview.png)
+
+**Deployment detail** — individual HTTP status counts and reported availability:
+
+![Model Inference Health workbook: status counts and availability by deployment](docs/images/model-health-deployments.png)
 
 ## Repository layout
 
