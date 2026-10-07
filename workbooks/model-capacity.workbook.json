@@ -90,7 +90,7 @@
                   "durationMs": 86400000
                 },
                 {
-                  "durationMs": 604800000
+                  "durationMs": 518400000
                 }
               ]
             }
@@ -156,7 +156,7 @@
                   "leftOperand": "TokenCount",
                   "operator": "is Empty",
                   "resultValType": "static",
-                  "resultVal": ""
+                  "resultVal": "Unavailable"
                 }
               },
               {
@@ -173,7 +173,7 @@
                 "criteriaContext": {
                   "operator": "Default",
                   "resultValType": "static",
-                  "resultVal": ""
+                  "resultVal": "Unavailable"
                 }
               }
             ]
@@ -190,7 +190,7 @@
                   "leftOperand": "RequestCount",
                   "operator": "is Empty",
                   "resultValType": "static",
-                  "resultVal": ""
+                  "resultVal": "Unavailable"
                 }
               },
               {
@@ -207,7 +207,7 @@
                 "criteriaContext": {
                   "operator": "Default",
                   "resultValType": "static",
-                  "resultVal": ""
+                  "resultVal": "Unavailable"
                 }
               }
             ]
@@ -315,7 +315,7 @@
       "type": 1,
       "name": "deployment-scope",
       "content": {
-        "json": "### Capacity drilldown: {Deployment:label}\n`{Deployment}`\n\nCurrent allocated TPM: **{TPM}**; current RPM equivalent: **{RPM}**. Blank limits mean unavailable, not zero or unlimited. The charts' horizontal reference lines use those current values."
+        "json": "### Capacity drilldown: {Deployment:label}\n`{Deployment}`\n\nCurrent allocated TPM: **{TPM}**; current RPM equivalent: **{RPM}**. Unavailable limits mean ARM did not report a usable limit, not zero or unlimited. The charts' horizontal reference lines use those current values."
       }
     },
     {

@@ -136,11 +136,11 @@ def per_minute_parameter(name, count, window):
         return dict(criteriaContext=values)
     return parameter(name, 1, isHiddenWhenLocked=True, criteriaData=[
         criterion(leftOperand=count, operator="is Empty",
-                  resultValType="static", resultVal=""),
+                  resultValType="static", resultVal="Unavailable"),
         criterion(leftOperand=window, operator=">",
                   rightValType="static", rightVal="0",
                   resultValType="expression", resultVal=f"60 * {{{count}}} / {{{window}}}"),
-        criterion(operator="Default", resultValType="static", resultVal=""),
+        criterion(operator="Default", resultValType="static", resultVal="Unavailable"),
     ])
 
 
@@ -173,7 +173,7 @@ def capacity_workbook():
         parameter("TimeRange", 4, isRequired=True, value=dict(durationMs=3600000),
                   typeSettings=dict(selectableValues=[
                       dict(durationMs=3600000), dict(durationMs=21600000),
-                      dict(durationMs=86400000), dict(durationMs=604800000)])),
+                      dict(durationMs=86400000), dict(durationMs=518400000)])),
         parameter("Deployment", 2, label="Detail deployment", isRequired=True,
                   queryType=12,
                   query=arm("{FoundryResource}/deployments", "$.value[*]",
@@ -211,7 +211,8 @@ def capacity_workbook():
     items.extend([
         text("deployment-scope", "### Capacity drilldown: {Deployment:label}\n"
              "`{Deployment}`\n\nCurrent allocated TPM: **{TPM}**; current RPM equivalent: "
-             "**{RPM}**. Blank limits mean unavailable, not zero or unlimited. "
+             "**{RPM}**. Unavailable limits mean ARM did not report a usable limit, "
+             "not zero or unlimited. "
              "The charts' horizontal reference lines use those current values."),
         query("deployment-configuration", arm(
             "{Deployment}", "$", [

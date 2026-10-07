@@ -38,6 +38,8 @@ def arithmetic(expression):
 
 
 def evaluate_criteria(param, values):
+    if any(not row["criteriaContext"]["resultVal"] for row in param["criteriaData"]):
+        raise ValueError("Portal criteria results must be nonempty")
     for row in param["criteriaData"]:
         rule = row["criteriaContext"]
         value = values.get(rule.get("leftOperand"))
@@ -131,14 +133,17 @@ class WorkbookTests(unittest.TestCase):
                        {"RequestCount": 10, "RequestWindow": None},
                        {"RequestCount": 10, "RequestWindow": 0},
                        {"RequestCount": 10, "RequestWindow": -1}):
-            self.assertEqual("", evaluate_criteria(self.params["RPM"], values))
+            self.assertEqual("Unavailable", evaluate_criteria(self.params["RPM"], values))
         self.assertEqual(0, evaluate_criteria(self.params["RPM"],
                                            {"RequestCount": 0, "RequestWindow": 60}))
 
+    def test_portal_criteria_require_nonempty_results_even_for_unmatched_rules(self):
+        for name in ("TPM", "RPM"):
+            for row in self.params[name]["criteriaData"]:
+                self.assertTrue(row["criteriaContext"]["resultVal"],
+                                "Portal rejects the entire criteria parameter for empty results")
+
     def test_exact_minute_queries_and_thresholds(self):
-        self.assertEqual(604800000, max(
-            value["durationMs"]
-            for value in self.params["TimeRange"]["typeSettings"]["selectableValues"]))
         expected = {
             "tokens-vs-tpm": "{TPM}", "requests-vs-rpm": "{RPM}",
             "ptu-utilization": "100", "throttling-429": None,
@@ -156,6 +161,10 @@ class WorkbookTests(unittest.TestCase):
                              content["chartSettings"].get("customThresholdLine"))
             if item["name"] == "throttling-429":
                 self.assertIn("StatusCode eq '429'", args["$filter"])
+
+    def test_minute_window_stays_below_actual_portal_10000_point_limit(self):
+        for value in self.params["TimeRange"]["typeSettings"]["selectableValues"]:
+            self.assertLessEqual(value["durationMs"] // 60000 + 1, 10000)
 
     def test_missing_zero_and_ptu_no_series_shapes(self):
         source = next(i["content"]["query"] for i in self.capacity["items"]
