@@ -112,6 +112,16 @@ class WorkbookTests(unittest.TestCase):
                     found.add(item["name"])
         self.assertTrue(required <= found)
 
+    def test_fleet_cached_token_merge_is_hidden_without_investigation_resource(self):
+        fleet = self.books["model-fleet.workbook"]
+        merge = next(i for i in fleet["items"] if i["name"] == "token-mix")
+        self.assertEqual({"parameterName": "FoundryResource", "comparison": "isNotEqualTo",
+                          "value": ""}, merge["conditionalVisibility"])
+        spec = json.loads(merge["content"]["query"])
+        self.assertEqual("leftouter", spec["merges"][0]["mergeType"])
+        self.assertEqual("token-input-source", spec["merges"][0]["leftTable"])
+        self.assertEqual("token-output-source", spec["merges"][0]["rightTable"])
+
     def test_unavailable_limits_select_charts_without_thresholds(self):
         items = {i["name"]: i for i in self.capacity["items"]}
         for name, limit in (("tokens-vs-tpm", "TPM"), ("requests-vs-rpm", "RPM")):

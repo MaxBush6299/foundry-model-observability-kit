@@ -354,6 +354,8 @@ def fleet_workbook(workbook):
         "Input and output totals for **Investigate resource** only. Blank output means no reported "
         "output tokens; embeddings commonly report input only. For charges, use Azure Cost Analysis."
     )
+    by_name["token-mix"]["conditionalVisibility"] = dict(
+        parameterName="FoundryResource", comparison="isNotEqualTo", value="")
     by_name["requests-label"]["content"]["json"] = (
         "### Requests by deployment\n"
         "Selected investigation resource only, including failures. "
