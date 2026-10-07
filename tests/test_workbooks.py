@@ -14,6 +14,8 @@ import build_workbooks as builder
 
 def extract(spec, payload):
     transform = json.loads(spec)["transformers"][0]["settings"]
+    if not transform["columns"]:
+        return [row.value for row in parse(transform["tablePath"]).find(payload)]
     return [
         {col["columnid"]: next(
             (hit.value for hit in parse(col["path"]).find(row.value)), None)
@@ -43,7 +45,7 @@ def evaluate_criteria(param, values):
         if rule["operator"] == "is Empty":
             matches = value is None or value == ""
         if rule["operator"] == ">":
-            matches = value not in (None, "") and value > float(rule["rightVal"])
+            matches = value not in (None, "") and float(value) > float(rule["rightVal"])
         if matches:
             result = rule["resultVal"]
             if rule["resultValType"] == "expression":
@@ -99,7 +101,7 @@ class WorkbookTests(unittest.TestCase):
             {"key": "token", "count": 10000, "renewalPeriod": 60},
             {"key": "request", "count": 10, "renewalPeriod": 10},
         ]}}
-        values = {name: extract(self.params[name]["query"], payload)[0]["value"]
+        values = {name: str(extract(self.params[name]["query"], payload)[0])
                   for name in ("TokenCount", "TokenWindow", "RequestCount", "RequestWindow")}
         self.assertEqual(10000, evaluate_criteria(self.params["TPM"], values))
         self.assertEqual(60, evaluate_criteria(self.params["RPM"], values))
@@ -134,6 +136,9 @@ class WorkbookTests(unittest.TestCase):
                                            {"RequestCount": 0, "RequestWindow": 60}))
 
     def test_exact_minute_queries_and_thresholds(self):
+        self.assertEqual(604800000, max(
+            value["durationMs"]
+            for value in self.params["TimeRange"]["typeSettings"]["selectableValues"]))
         expected = {
             "tokens-vs-tpm": "{TPM}", "requests-vs-rpm": "{RPM}",
             "ptu-utilization": "100", "throttling-429": None,
@@ -146,7 +151,7 @@ class WorkbookTests(unittest.TestCase):
             args = {p["key"]: p["value"] for p in spec["urlParams"]}
             self.assertEqual("PT1M", args["interval"])
             self.assertEqual("false", args["autoAdjustTimegrain"])
-            self.assertIn("ModelDeploymentName eq '{Deployment:name}'", args["$filter"])
+            self.assertIn("ModelDeploymentName eq '{Deployment:label}'", args["$filter"])
             self.assertEqual(expected[item["name"]],
                              content["chartSettings"].get("customThresholdLine"))
             if item["name"] == "throttling-429":
@@ -181,6 +186,24 @@ class WorkbookTests(unittest.TestCase):
         for item in self.capacity["items"]:
             if item["type"] == 3:
                 self.assertNotEqual(7, item["content"]["queryType"])
+
+    def test_dropdown_browser_value_label_and_scalar_text_contract(self):
+        value = "/subscriptions/s/resourceGroups/r/providers/Microsoft.CognitiveServices/accounts/a/deployments/MixedCase"
+        label = "MixedCase"
+        for name in ("TokenCount", "TokenWindow", "RequestCount", "RequestWindow"):
+            spec = json.loads(self.params[name]["query"])
+            self.assertEqual(value, spec["path"].replace("{Deployment}", value))
+            self.assertEqual([], spec["transformers"][0]["settings"]["columns"])
+        for item in self.capacity["items"]:
+            if item["name"] not in ("tokens-vs-tpm", "requests-vs-rpm",
+                                    "ptu-utilization", "throttling-429"):
+                continue
+            spec = json.loads(item["content"]["query"])
+            args = {p["key"]: p["value"] for p in spec["urlParams"]}
+            rendered = args["$filter"].replace("{Deployment:label}", label)
+            self.assertIn("ModelDeploymentName eq 'MixedCase'", rendered)
+            self.assertNotIn(value, rendered)
+            self.assertNotIn("{Deployment:name}", args["$filter"])
 
 
 if __name__ == "__main__":

@@ -88,6 +88,9 @@
                 },
                 {
                   "durationMs": 86400000
+                },
+                {
+                  "durationMs": 604800000
                 }
               ]
             }
@@ -112,7 +115,7 @@
             "type": 1,
             "isHiddenWhenLocked": true,
             "queryType": 12,
-            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='token')]\",\"columns\":[{\"path\":\"$.count\",\"columnid\":\"value\",\"columnType\":\"real\"}]}}]}"
+            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='token')].count\",\"columns\":[]}}]}"
           },
           {
             "id": "TokenWindow",
@@ -121,7 +124,7 @@
             "type": 1,
             "isHiddenWhenLocked": true,
             "queryType": 12,
-            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='token')]\",\"columns\":[{\"path\":\"$.renewalPeriod\",\"columnid\":\"value\",\"columnType\":\"real\"}]}}]}"
+            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='token')].renewalPeriod\",\"columns\":[]}}]}"
           },
           {
             "id": "RequestCount",
@@ -130,7 +133,7 @@
             "type": 1,
             "isHiddenWhenLocked": true,
             "queryType": 12,
-            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='request')]\",\"columns\":[{\"path\":\"$.count\",\"columnid\":\"value\",\"columnType\":\"real\"}]}}]}"
+            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='request')].count\",\"columns\":[]}}]}"
           },
           {
             "id": "RequestWindow",
@@ -139,7 +142,7 @@
             "type": 1,
             "isHiddenWhenLocked": true,
             "queryType": 12,
-            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='request')]\",\"columns\":[{\"path\":\"$.renewalPeriod\",\"columnid\":\"value\",\"columnType\":\"real\"}]}}]}"
+            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='request')].renewalPeriod\",\"columns\":[]}}]}"
           },
           {
             "id": "TPM",
@@ -350,7 +353,7 @@
       "name": "tokens-vs-tpm",
       "content": {
         "version": "KqlItem/1.0",
-        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"TotalTokens\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:name}'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.total\",\"columnid\":\"Processed tokens/minute\",\"columnType\":\"real\"}]}}]}",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"TotalTokens\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:label}'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.total\",\"columnid\":\"Processed tokens/minute\",\"columnType\":\"real\"}]}}]}",
         "queryType": 12,
         "size": 0,
         "visualization": "timechart",
@@ -380,7 +383,7 @@
       "name": "requests-vs-rpm",
       "content": {
         "version": "KqlItem/1.0",
-        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"ModelRequests\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:name}'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.total\",\"columnid\":\"Requests/minute\",\"columnType\":\"real\"}]}}]}",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"ModelRequests\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:label}'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.total\",\"columnid\":\"Requests/minute\",\"columnType\":\"real\"}]}}]}",
         "queryType": 12,
         "size": 0,
         "visualization": "timechart",
@@ -410,7 +413,7 @@
       "name": "ptu-utilization",
       "content": {
         "version": "KqlItem/1.0",
-        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"ProvisionedUtilization\"},{\"key\":\"aggregation\",\"value\":\"Average,Maximum\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:name}'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.average\",\"columnid\":\"Average utilization (%)\",\"columnType\":\"real\"},{\"path\":\"$.maximum\",\"columnid\":\"Maximum utilization (%)\",\"columnType\":\"real\"}]}}]}",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"ProvisionedUtilization\"},{\"key\":\"aggregation\",\"value\":\"Average,Maximum\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:label}'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.average\",\"columnid\":\"Average utilization (%)\",\"columnType\":\"real\"},{\"path\":\"$.maximum\",\"columnid\":\"Maximum utilization (%)\",\"columnType\":\"real\"}]}}]}",
         "queryType": 12,
         "size": 0,
         "visualization": "timechart",
@@ -441,7 +444,7 @@
       "name": "throttling-429",
       "content": {
         "version": "KqlItem/1.0",
-        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"ModelRequests\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:name}' and StatusCode eq '429'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.total\",\"columnid\":\"HTTP 429 responses/minute\",\"columnType\":\"real\"}]}}]}",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"ModelRequests\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:label}' and StatusCode eq '429'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.total\",\"columnid\":\"HTTP 429 responses/minute\",\"columnType\":\"real\"}]}}]}",
         "queryType": 12,
         "size": 0,
         "visualization": "timechart",

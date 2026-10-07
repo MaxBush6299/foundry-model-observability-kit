@@ -126,8 +126,8 @@ def apply_scope(workbook):
 def limit_parameter(name, key, field):
     return parameter(
         name, 1, isHiddenWhenLocked=True, queryType=12,
-        query=arm("{Deployment}", f"$.properties.rateLimits[?(@.key=='{key}')]",
-                  [column(f"$.{field}", "value", "real")], **{"api-version": "2024-10-01"}),
+        query=arm("{Deployment}", f"$.properties.rateLimits[?(@.key=='{key}')].{field}",
+                  [], **{"api-version": "2024-10-01"}),
     )
 
 
@@ -145,7 +145,7 @@ def per_minute_parameter(name, count, window):
 
 
 def minute_query(name, metric, aggregation, fields, threshold=None, status=None):
-    filters = "ModelDeploymentName eq '{Deployment:name}'"
+    filters = "ModelDeploymentName eq '{Deployment:label}'"
     if status:
         filters += f" and StatusCode eq '{status}'"
     columns = [column("$.timeStamp", "Time", "datetime")]
@@ -173,7 +173,7 @@ def capacity_workbook():
         parameter("TimeRange", 4, isRequired=True, value=dict(durationMs=3600000),
                   typeSettings=dict(selectableValues=[
                       dict(durationMs=3600000), dict(durationMs=21600000),
-                      dict(durationMs=86400000)])),
+                      dict(durationMs=86400000), dict(durationMs=604800000)])),
         parameter("Deployment", 2, label="Detail deployment", isRequired=True,
                   queryType=12,
                   query=arm("{FoundryResource}/deployments", "$.value[*]",
