@@ -1,6 +1,6 @@
-name: foundry-observability-starter-kit
+name: foundry-model-observability-kit
 metadata:
-  template: foundry-observability-starter-kit@0.1.0
+  template: foundry-model-observability-kit@0.1.0
 services: {}
 infra:
   provider: bicep

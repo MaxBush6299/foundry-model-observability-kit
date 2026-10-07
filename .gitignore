@@ -10,18 +10,6 @@
 *.bicep.json
 
 # ---------------------------------------------------------------------------
-# Spec Kit / AI-assisted dev tooling (not needed to deploy the starter kit)
-# Remove these lines if you want to publish the design specs.
-# ---------------------------------------------------------------------------
-.specify/
-.github/agents/
-.github/prompts/
-specs/
-
-# Local scratch reference (not part of the deployed kit)
-observability-workbook.json
-
-# ---------------------------------------------------------------------------
 # Editor / IDE
 # ---------------------------------------------------------------------------
 .vscode/

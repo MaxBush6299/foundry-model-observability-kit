@@ -1,31 +1,35 @@
 # Deployment Prerequisites
 
-## Required tooling
-- Azure subscription with permission to create/update resource-group scoped resources.
-- Azure CLI and Azure Developer CLI installed and authenticated (`az login`, `azd auth login`).
-- Bicep CLI available via Azure CLI.
+## Tooling and permissions
 
-## Required signal source (the key prerequisite)
-The workbooks visualize the OpenTelemetry GenAI spans that Microsoft Foundry writes to Application Insights. Before deploying, make sure this data is flowing:
+- Azure CLI with Bicep available (`az bicep version`), authenticated with `az login`.
+- Azure Developer CLI (`azd auth login`) only if using the optional `azd provision` path.
+- An existing workbook resource group and permission to create/update `Microsoft.Insights/workbooks`.
+- Reader access to workbooks and **Monitoring Reader** or equivalent metrics-read permission on each monitored account.
+- Permission to create role assignments only if using `sharedViewerPrincipalObjectIds`. Workbook Reader assignments do not grant metrics access on the account.
 
-- A **Foundry project connected to an Application Insights resource**. Foundry enables server-side tracing automatically for prompt and hosted agents once connected. See [Set up tracing in Microsoft Foundry](https://learn.microsoft.com/azure/foundry/observability/how-to/trace-agent-setup#connect-application-insights-to-your-foundry-project).
-- At least one **agent run**, so `invoke_agent` / `chat` / `execute_tool` spans exist in the `dependencies` table.
-- The [Log Analytics Reader role](https://learn.microsoft.com/azure/azure-monitor/logs/manage-access?tabs=portal#log-analytics-reader) on the connected Application Insights resource (required to query telemetry).
+## Signal source
 
-### Signals the workbooks read
-All tiles are keyed on the [OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/), found in the `dependencies` table:
+An existing Foundry or Azure OpenAI account (`Microsoft.CognitiveServices/accounts`, kind `AIServices` or `OpenAI`) with at least one model deployment. Platform metrics are collected automatically; traffic must exist in the selected range for request and token signals to populate.
 
-| Span (`gen_ai.operation.name`) | Used for | Key attributes |
-| --- | --- | --- |
-| `invoke_agent` | agent runs, latency, errors | `gen_ai.agent.name`, `gen_ai.agent.id`, `gen_ai.conversation.id` |
-| `chat` | model calls, token usage | `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` |
-| `execute_tool` | tool/A2A calls | `gen_ai.tool.name` |
+No Application Insights, Log Analytics workspace, diagnostic settings, or application instrumentation is required.
 
-## Configuration inputs
-- Deployment location and resource group.
-- Monitoring mode: create new or reuse an existing Log Analytics workspace + Application Insights.
-- Reuse mode: existing App Insights name (same resource group) or explicit resource IDs.
+| Signal | Coverage |
+| --- | --- |
+| `ModelRequests`, `ModelAvailabilityRate` | Foundry Models metrics, where populated by the selected provider/deployment |
+| `InputTokens`, `OutputTokens`, `TotalTokens` | Input/output support depends on model type; embeddings commonly report input only |
+| `TimeToResponse` | Gateway time to first response; documented for PTU/PTU-managed workloads |
+| `AzureOpenAITimeToResponse` | Azure OpenAI time to first response; documented for PTU and pay-as-you-go workloads |
 
-## Optional inputs
-- `cognitiveServicesAccountName` — attach Azure OpenAI resource diagnostics to the workspace (skipped when omitted).
-- `sharedViewerPrincipalObjectIds` — assign Reader on the workbooks. Requires the deploying identity to have permission to create role assignments.
+The focused workbook offers a latency metric picker. It does not infer missing latency, substitute unrelated service latency, or calculate percentiles from averages.
+
+## Configuration
+
+- Required: `modelAccountResourceId`, the full resource ID of an existing account.
+- Optional: `location`, defaulting to the workbook resource group's location.
+- Optional: `sharedViewerPrincipalObjectIds`, an array of user/group/service-principal object IDs.
+- Optional: `sharedViewerPrincipalType`, one of `User` (default), `Group`, or `ServicePrincipal`.
+
+For `azd`, configure `AZURE_LOCATION`, `AZURE_RESOURCE_GROUP`, and `MODEL_ACCOUNT_RESOURCE_ID`; see [.azure/.env.example](../.azure/.env.example).
+
+The workbook account picker queries Azure Resource Graph over the portal's selected subscriptions. If an account is missing, check the subscription selection and resource-read access. The account can be in a different resource group from the workbooks.

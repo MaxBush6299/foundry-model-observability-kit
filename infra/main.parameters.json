@@ -5,23 +5,8 @@
     "location": {
       "value": "${AZURE_LOCATION}"
     },
-    "useExistingMonitoringResources": {
-      "value": "${USE_EXISTING_MONITORING_RESOURCES=false}"
-    },
-    "logAnalyticsWorkspaceId": {
-      "value": "${LOG_ANALYTICS_WORKSPACE_ID=}"
-    },
-    "applicationInsightsResourceId": {
-      "value": "${APPLICATION_INSIGHTS_RESOURCE_ID=}"
-    },
-    "existingApplicationInsightsName": {
-      "value": "${EXISTING_APPLICATION_INSIGHTS_NAME=}"
-    },
-    "cognitiveServicesAccountName": {
-      "value": "${COGNITIVE_SERVICES_ACCOUNT_NAME=}"
-    },
-    "retentionDays": {
-      "value": "${RETENTION_DAYS=30}"
+    "modelAccountResourceId": {
+      "value": "${MODEL_ACCOUNT_RESOURCE_ID}"
     }
   }
 }
