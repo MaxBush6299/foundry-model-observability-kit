@@ -284,6 +284,36 @@ class WorkbookTests(unittest.TestCase):
         self.assertTrue({"token-input-source", "token-output-source", "token-mix", "requests"}
                         <= set(by_name))
 
+    def test_fleet_friendly_labels_are_display_only_with_full_id_leaf_keys(self):
+        fleet = self.books["model-fleet.workbook"]
+        grid = next(i["content"]["gridSettings"] for i in fleet["items"]
+                    if i["name"] == "subscription-model-totals")
+        formatter = next((f for f in grid["formatters"]
+                          if f["columnMatch"] == "$gen_group"), None)
+        self.assertIsNotNone(formatter)
+        self.assertEqual(13, formatter["formatter"])
+        self.assertEqual({"showIcon": False}, formatter["formatOptions"])
+        self.assertEqual(["Subscription", "Segment"], grid["hierarchySettings"]["groupBy"])
+        self.assertEqual("Name", grid["hierarchySettings"]["finalBy"])
+        rows = json.loads((builder.ROOT / "tests" / "fixtures" /
+                           "subscription-model-metrics.json").read_text())
+        shared = [row for row in rows if row["model"] == "shared-model"]
+        self.assertEqual(1, len({row["account"] for row in shared}))
+        self.assertEqual(3, len({row["accountResourceId"] for row in shared}))
+        leaves = {}
+        for row in shared:
+            self.assertTrue(row["accountResourceId"].startswith(row["subscription"] + "/"))
+            leaves.setdefault((row["subscription"], row["model"]), {}).setdefault(
+                row["accountResourceId"], []).append(row)
+        a = "/subscriptions/11111111-1111-1111-1111-111111111111"
+        b = "/subscriptions/22222222-2222-2222-2222-222222222222"
+        self.assertEqual(2, len(leaves[a, "shared-model"]))
+        self.assertEqual(1, len(leaves[b, "shared-model"]))
+        self.assertEqual(30, nullable_sum(row["input"] for leaf in leaves[a, "shared-model"].values()
+                                         for row in leaf))
+        self.assertEqual(70, nullable_sum(row["input"] for leaf in leaves[b, "shared-model"].values()
+                                         for row in leaf))
+
 
 if __name__ == "__main__":
     unittest.main()

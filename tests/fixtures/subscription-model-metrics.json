@@ -1,7 +1,8 @@
 [
   {
     "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
-    "account": "account-a",
+    "account": "same-account",
+    "accountResourceId": "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-a/providers/Microsoft.CognitiveServices/accounts/same-account",
     "deployment": "deployment-one",
     "model": "shared-model",
     "input": 10, "output": 5, "total": 15, "requests": 2,
@@ -10,7 +11,8 @@
   },
   {
     "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
-    "account": "account-b",
+    "account": "same-account",
+    "accountResourceId": "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-b/providers/Microsoft.CognitiveServices/accounts/same-account",
     "deployment": "deployment-two",
     "model": "shared-model",
     "input": 20, "output": null, "total": 20, "requests": 3,
@@ -19,7 +21,8 @@
   },
   {
     "subscription": "/subscriptions/22222222-2222-2222-2222-222222222222",
-    "account": "account-c",
+    "account": "same-account",
+    "accountResourceId": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-a/providers/Microsoft.CognitiveServices/accounts/same-account",
     "deployment": "deployment-one",
     "model": "shared-model",
     "input": 70, "output": 40, "total": 110, "requests": 7,
@@ -28,7 +31,8 @@
   },
   {
     "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
-    "account": "account-a",
+    "account": "same-account",
+    "accountResourceId": "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-a/providers/Microsoft.CognitiveServices/accounts/same-account",
     "deployment": "embedding-one",
     "model": "embedding-model",
     "input": 9, "output": null, "total": 9, "requests": 1,
@@ -37,7 +41,8 @@
   },
   {
     "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
-    "account": "account-b",
+    "account": "same-account",
+    "accountResourceId": "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-b/providers/Microsoft.CognitiveServices/accounts/same-account",
     "deployment": "embedding-two",
     "model": "embedding-model",
     "input": 6, "output": null, "total": 6, "requests": 2,
@@ -46,7 +51,8 @@
   },
   {
     "subscription": "/subscriptions/22222222-2222-2222-2222-222222222222",
-    "account": "account-c",
+    "account": "same-account",
+    "accountResourceId": "/subscriptions/22222222-2222-2222-2222-222222222222/resourceGroups/rg-a/providers/Microsoft.CognitiveServices/accounts/same-account",
     "deployment": "embedding-one",
     "model": "embedding-model",
     "input": 8, "output": null, "total": 8, "requests": 1,
@@ -55,7 +61,8 @@
   },
   {
     "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
-    "account": "account-a",
+    "account": "same-account",
+    "accountResourceId": "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-a/providers/Microsoft.CognitiveServices/accounts/same-account",
     "deployment": "measured-zero",
     "model": "zero-model",
     "input": 0, "output": null, "total": 0, "requests": 0,
@@ -64,7 +71,8 @@
   },
   {
     "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
-    "account": "account-b",
+    "account": "same-account",
+    "accountResourceId": "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-b/providers/Microsoft.CognitiveServices/accounts/same-account",
     "deployment": "no-samples",
     "model": "missing-model",
     "input": null, "output": null, "total": null, "requests": null,

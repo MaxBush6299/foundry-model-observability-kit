@@ -141,7 +141,8 @@ def fleet_workbook(workbook):
         "### Subscription comparison and account drilldown\n"
         "Select subscriptions, then all accounts you want included in **Compare accounts**. "
         "The totals table sums selected accounts/deployments by full subscription resource ID "
-        "and underlying `ModelName`. Expand a model row to inspect its contributing accounts. "
+        "and underlying `ModelName`. Expand a model row to see contributing account names; "
+        "hover resource links for full IDs and subscription/resource-group context. "
         "Trends remain separate account/deployment series, **not subscription/model rollups**.\n\n"
         "Only RBAC-accessible resources are discoverable; selecting a subscription does not "
         "automatically include every account. Project inventory is metadata: usage belongs "
@@ -168,7 +169,10 @@ def fleet_workbook(workbook):
         ("InputTokens", "Input tokens"), ("OutputTokens", "Output tokens"),
         ("TotalTokens", "Total tokens"), ("ModelRequests", "Requests"),
     ]
-    formatters = [dict(columnMatch=name, formatter=5) for name in ("Name", "Segment")]
+    formatters = [
+        dict(columnMatch="$gen_group", formatter=13, formatOptions=dict(showIcon=False)),
+        *[dict(columnMatch=name, formatter=5) for name in ("Name", "Segment")],
+    ]
     labels = [dict(columnId="Subscription", label="Subscription / model / account")]
     for metric, label in metric_labels:
         key = f"microsoft.cognitiveservices/accounts--{metric}"

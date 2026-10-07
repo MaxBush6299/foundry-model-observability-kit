@@ -108,7 +108,7 @@
       "type": 1,
       "name": "scope-notes",
       "content": {
-        "json": "### Subscription comparison and account drilldown\nSelect subscriptions, then all accounts you want included in **Compare accounts**. The totals table sums selected accounts/deployments by full subscription resource ID and underlying `ModelName`. Expand a model row to inspect its contributing accounts. Trends remain separate account/deployment series, **not subscription/model rollups**.\n\nOnly RBAC-accessible resources are discoverable; selecting a subscription does not automatically include every account. Project inventory is metadata: usage belongs to parent accounts/deployments and is **not project-attributed**."
+        "json": "### Subscription comparison and account drilldown\nSelect subscriptions, then all accounts you want included in **Compare accounts**. The totals table sums selected accounts/deployments by full subscription resource ID and underlying `ModelName`. Expand a model row to see contributing account names; hover resource links for full IDs and subscription/resource-group context. Trends remain separate account/deployment series, **not subscription/model rollups**.\n\nOnly RBAC-accessible resources are discoverable; selecting a subscription does not automatically include every account. Project inventory is metadata: usage belongs to parent accounts/deployments and is **not project-attributed**."
       }
     },
     {
@@ -214,6 +214,13 @@
             "finalBy": "Name"
           },
           "formatters": [
+            {
+              "columnMatch": "$gen_group",
+              "formatter": 13,
+              "formatOptions": {
+                "showIcon": false
+              }
+            },
             {
               "columnMatch": "Name",
               "formatter": 5
