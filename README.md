@@ -5,13 +5,15 @@ Four deployable **model-only Azure Monitor workbooks** for Microsoft Foundry and
 | Workbook | Focus |
 | --- | --- |
 | **Model Fleet & Usage** | Combined subscription/underlying-model input/output/total-token and request totals, with separate account/deployment trends and detail |
-| **Model Inference Health** | HTTP response trends, account-wide and per-deployment status counts, reported availability, and response time |
-| **Model Volume, Latency & Availability** | A focused operational view with three deployment-level trends and summary tables: request totals, average/maximum gateway latency, and average/minimum reported availability |
-| **Model Usage vs Capacity** | One-minute processed tokens vs current allocated TPM (approximate), requests vs RPM equivalent, PTU utilization vs 100%, and HTTP 429 counts |
+| **Model Inference Health** | Resource/deployment health and HTTP-status comparisons, then selected-resource status counts and health trends |
+| **Model Volume, Latency & Availability** | Resource/deployment volume, first-response latency and availability comparisons, then selected-resource trends and summaries |
+| **Model Usage vs Capacity** | Cross-resource traffic and reported PTU utilization, then selected-deployment one-minute usage vs current TPM/RPM, PTU and 429 counts |
 
-The operational workbook defaults to **24 hours**; capacity drilldown defaults to **one hour** and offers up to six days at one-minute resolution (8,640 points per series, below the portal chart's 10,000-point limit). Use shorter ranges for interactive performance. All workbooks include subscription, multi-account comparison, detail-account, and time-range pickers, plus account and project inventory. Native trends retain separate account/deployment series; Fleet additionally combines scalar totals by subscription/model. Metrics request up to 1,000 model/deployment series per resource.
+Fleet and Health default to **seven days**, Signals to **24 hours**, and Capacity to **one hour**. Capacity offers up to six days at one-minute resolution (8,640 points per series, below the portal chart's 10,000-point limit). These different windows are intentional; use shorter ranges for interactive performance. All four put estate comparison and sortable resource breakdowns before investigation, with inventory/project mappings last. Native trends retain resource/deployment identity; Fleet additionally combines scalar subscription/model totals.
 
-**Admin scope:** select subscriptions, then select multiple **Compare accounts** entries to compare their metrics. **Detail account** picks one of those accounts for ARM summary tables; Usage vs Capacity also has a deployment picker. Account inventory includes full resource IDs so identical account/deployment names are not mistaken for the same resource. Project inventory lists `Microsoft.CognitiveServices/accounts/projects` and its parent account. Account/deployment metrics are **not attributed to individual projects** that share an account. Discovery is limited by RBAC and the portal's available subscriptions, not a complete tenant inventory.
+**Admin scope:** explicitly select subscriptions. **Compare accounts** defaults to native **All**: every eligible discovered account in those subscriptions, including new accounts on scope refresh. It does not select every subscription or tenant. A manual subset remains a subset; choose **All** again to restore broad comparison. **Investigate resource** lower down selects a member of that comparison set without narrowing the overview; Capacity also selects a deployment. Native dependent pickers remove values no longer in scope. Resource links show short names and retain full-ID subscription/RG context on hover. Projects are parent-account inventory, **never project-attributed platform metrics**. Discovery is RBAC-filtered, not a complete tenant inventory.
+
+**Coverage limits:** wildcard REST queries explicitly request `top=1000` instead of the API's default ten series, and native metrics use a 1,000-series split cap. This is not unlimited coverage. Native resource/grid limits are 10,000; Resource Graph discovery can itself be result-limited. The selected-resource response table exposes metric errors and returned-series counts; counts at the cap warrant narrower queries. Metrics List has no documented next-page/completeness marker. Large-estate performance beyond the tested scope is not established; reduce subscriptions/accounts and time range when needed.
 
 ## Prerequisites
 
@@ -55,7 +57,7 @@ The mapping is in [infra/main.parameters.json](infra/main.parameters.json); [.az
 
 ### Open the workbooks
 
-In the Azure portal, go to **Monitor > Workbooks > Saved workbooks** and select the deployment subscription and resource group. The resource picker defaults to the account passed at deployment and lists accessible Foundry/Azure OpenAI accounts from the portal's selected subscriptions.
+In the Azure portal, go to **Monitor > Workbooks > Saved workbooks** and select the deployment subscription and resource group. The supplied account initializes its subscription; **Compare accounts** defaults to **All** eligible accounts discovered in explicitly selected subscriptions. The separate investigation picker selects one valid member.
 
 Both deployment entrypoints return:
 
@@ -68,19 +70,21 @@ Optional `sharedViewerPrincipalObjectIds` and `sharedViewerPrincipalType` inputs
 
 ## Fleet subscription/model comparisons
 
-Fleet defaults to a **combined subscription/model totals** table. `ModelName` identifies the underlying model, regardless of deployment aliases; versions with the same model name are combined. It sums input, output, total tokens, and requests across **all selected Compare accounts** within each subscription. Select subscriptions first, then choose the accounts to include; subscription selection alone does not select every account.
+Fleet starts with a **combined subscription/model totals** table, then a sortable resource usage breakdown. `ModelName` identifies the underlying model, regardless of deployment aliases; versions with the same model name are combined. It sums input, output, total tokens, and requests across **Compare accounts** within each subscription. Native **All** includes all discovered eligible accounts by default; explicit subsets are optional.
 
 The table groups by full subscription resource ID, then model name, and shows an all-model subscription subtotal. Rows display resource names and genuine subscription display names when resolved by the portal, without changing those ID-based grouping keys. Expand model rows to inspect contributing accounts; hover resource links for the full ID and subscription/resource-group context. Identically named accounts in different resource groups/subscriptions remain distinct. These are account resources, not project-attributed usage. All-missing output remains blank, including embeddings; measured zero remains zero. Totals cover the selected range and are not utilization or billed cost.
 
-**Trends are account/deployment-scoped, not rolled up by subscription/model.** Grouped Sum sparklines are intentionally hidden because the portal fills missing grouped buckets with zero. Separate token/request trends and the detail-account deployment table remain available without introducing that grouping fallback. If only one subscription is accessible in the signed-in directory, live comparisons cover that subscription only; cross-subscription identity/null regressions use synthetic fixtures.
+**Trends are account/deployment-scoped, not rolled up by subscription/model.** Grouped Sum sparklines are intentionally hidden because the portal fills missing grouped buckets with zero. **Request trends by resource** retains separate resource/deployment series; **Requests by deployment** lower down uses only the investigation resource. The original input/output token join is preserved. If only one subscription is accessible in the signed-in directory, live comparisons cover that subscription only; cross-subscription identity/null regressions use synthetic fixtures.
 
 ## Usage versus capacity
 
 The capacity workbook reads **current deployment rate limits** from ARM, without converting SKU capacity units. TPM/RPM equivalents are `60 * count / renewalPeriod` using each reported token/request rule. Ten requests per ten seconds means 60 RPM equivalent, but not a permitted burst of 60 requests. Missing or unusable limits display **Unavailable**; no SKU multiplier or fabricated capacity is substituted.
 
+**User-approved capacity scope:** the estate overview compares resource/deployment traffic and actually reported PTU utilization against 100%. Pay-as-you-go allocated TPM/RPM is compared with exact minute usage only in **selected-deployment drilldown**, not fleet-wide. ARM configuration is available, but the current native Workbook ARM provider rejects root `/batch` enumeration with `Path must be for an Azure Resource`, including the published native batch pattern. No rejected prototype, new backend or inferred allocation is shipped. Range traffic totals are not utilization, and missing PTU samples do not mean 0%.
+
 Processed `TotalTokens` per minute is an **approximate** comparison with allocated TPM: Azure throttles using arrival-time estimated tokens, including requested output, rather than processed totals. Request limits can be enforced over sub-minute windows; dynamic throttling and bursts can produce 429s below the line. PTU uses `ProvisionedUtilization` against 100%, with average and maximum samples. Non-PTU/no-sample deployments do not establish zero utilization.
 
-Horizontal reference lines use capacity read **now**, not the historical limit at each timestamp. This is deployment usage versus capacity, **not subscription assigned quota** or billed cost. The workbook never aggregates hourly token totals against a per-minute limit.
+Horizontal reference lines use capacity read **now**, not the historical limit at each timestamp. When TPM or RPM is **Unavailable**, a separate usage-only chart omits the threshold property entirely; empty charts remain explicitly no-data. This is deployment usage versus capacity, **not subscription assigned quota** or billed cost. The workbook never aggregates hourly token totals against a per-minute limit.
 
 ## Interpreting the three signals
 

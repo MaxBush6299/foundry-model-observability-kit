@@ -45,31 +45,20 @@
             "multiSelect": true,
             "quote": "'",
             "delimiter": ",",
-            "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__', group=subscriptionId",
+            "value": [
+              "value::all"
+            ],
+            "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=false, group=subscriptionId",
             "crossComponentResources": [
               "{Subscriptions}"
             ],
             "queryType": 1,
             "resourceType": "microsoft.resourcegraph/resources",
             "typeSettings": {
-              "additionalResourceOptions": []
-            }
-          },
-          {
-            "id": "FoundryResource",
-            "version": "KqlParameterItem/1.0",
-            "name": "FoundryResource",
-            "type": 5,
-            "label": "Detail account",
-            "isRequired": true,
-            "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__'",
-            "crossComponentResources": [
-              "{Subscriptions}"
-            ],
-            "queryType": 1,
-            "resourceType": "microsoft.resourcegraph/resources",
-            "typeSettings": {
-              "additionalResourceOptions": []
+              "additionalResourceOptions": [
+                "value::all"
+              ],
+              "showDefault": false
             }
           },
           {
@@ -108,38 +97,7 @@
       "type": 1,
       "name": "scope-notes",
       "content": {
-        "json": "### Subscription comparison and account drilldown\nSelect subscriptions, then all accounts you want included in **Compare accounts**. The totals table sums selected accounts/deployments by full subscription resource ID and underlying `ModelName`. Expand a model row to see contributing account names; hover resource links for full IDs and subscription/resource-group context. Trends remain separate account/deployment series, **not subscription/model rollups**.\n\nOnly RBAC-accessible resources are discoverable; selecting a subscription does not automatically include every account. Project inventory is metadata: usage belongs to parent accounts/deployments and is **not project-attributed**."
-      }
-    },
-    {
-      "type": 3,
-      "name": "account-inventory",
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project Account=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, Region=location, Kind=kind, AccountResourceId=id",
-        "queryType": 1,
-        "size": 0,
-        "visualization": "grid",
-        "crossComponentResources": [
-          "{Subscriptions}"
-        ],
-        "resourceType": "microsoft.resourcegraph/resources"
-      }
-    },
-    {
-      "type": 3,
-      "name": "project-inventory",
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts/projects' | extend AccountResourceId=tostring(split(tolower(id), '/projects/')[0]) | where AccountResourceId in~ ({FoundryResources}) | project Project=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, AccountResourceId, ProjectResourceId=id",
-        "queryType": 1,
-        "size": 0,
-        "visualization": "grid",
-        "noDataMessage": "No accessible Foundry projects for the selected accounts.",
-        "crossComponentResources": [
-          "{Subscriptions}"
-        ],
-        "resourceType": "microsoft.resourcegraph/resources"
+        "json": "### Subscription comparison and account drilldown\n**Compare accounts: All** includes all eligible discovered accounts in the explicitly selected subscriptions, including new accounts on scope refresh. Choose a manual subset to filter comparison; return to **All** for broad scope. **Investigate resource** below never narrows the overview. Changing comparison scope removes out-of-scope detail selections.\n\nOnly RBAC-accessible accounts are discoverable. Queries request up to **1,000 series per resource/metric**; this is a cap, not proof of complete results. Discovery and grids also have limits; reduce scope/range for large estates. Blank cells/no data are not healthy zeroes; query errors must be investigated."
       }
     },
     {
@@ -302,6 +260,140 @@
     },
     {
       "type": 1,
+      "name": "comparison-label",
+      "content": {
+        "json": "### Compare the estate\nSort resource values to identify outliers, then investigate a resource below. Resource links use full IDs; hover for subscription/resource-group context when names collide. Missing values remain unavailable. No statistical anomaly detector or averages-of-averages across resources are used."
+      }
+    },
+    {
+      "type": 10,
+      "name": "resource-comparison",
+      "content": {
+        "version": "MetricsItem/2.0",
+        "chartId": "admin-resource-comparison",
+        "size": 0,
+        "chartType": 0,
+        "gridFormatType": 2,
+        "resourceLimit": 10000,
+        "resourceIds": [
+          "{FoundryResources}"
+        ],
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "timeContextFromParameter": "TimeRange",
+        "timeGrain": "FULL",
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--InputTokens",
+            "aggregation": 1,
+            "splitByLimit": 1000
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--OutputTokens",
+            "aggregation": 1,
+            "splitByLimit": 1000
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--TotalTokens",
+            "aggregation": 1,
+            "splitByLimit": 1000
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelRequests",
+            "aggregation": 1,
+            "splitByLimit": 1000
+          }
+        ],
+        "title": "Resource Comparison",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Name",
+              "formatter": 13,
+              "formatOptions": {
+                "showIcon": false
+              }
+            },
+            {
+              "columnMatch": "Subscription",
+              "formatter": 13,
+              "formatOptions": {
+                "showIcon": false
+              }
+            },
+            {
+              "columnMatch": "Segment",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--InputTokens",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--InputTokens Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--OutputTokens",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--OutputTokens Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--TotalTokens",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--TotalTokens Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests Timeline",
+              "formatter": 5
+            }
+          ],
+          "labelSettings": [
+            {
+              "columnId": "Subscription",
+              "label": "Subscription"
+            },
+            {
+              "columnId": "Name",
+              "label": "Resource"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--InputTokens",
+              "label": "Input tokens"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--OutputTokens",
+              "label": "Output tokens"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--TotalTokens",
+              "label": "Total tokens"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "label": "Requests"
+            }
+          ],
+          "rowLimit": 10000,
+          "filter": true
+        }
+      }
+    },
+    {
+      "type": 1,
       "name": "trend-label",
       "content": {
         "json": "### Account/deployment token trends (not subscription/model rollups)\nSeparate series retain resource identity and deployment names. Values are token totals within each chart interval, not per-minute capacity. No cross-account grouped sparklines are shown: native Sum sparklines can turn missing buckets into zero."
@@ -329,14 +421,15 @@
             "splitByLimit": 1000
           }
         ],
-        "title": "Account/deployment token trends"
+        "title": "Account/deployment token trends",
+        "resourceLimit": 10000
       }
     },
     {
       "type": 1,
       "name": "request-trend-label",
       "content": {
-        "json": "### Account/deployment request trends (not subscription/model rollups)\nSeparate resource/deployment series, summed within each interval, including failures. These are not combined subscription/model trends. Missing samples are not measured zero."
+        "json": "### Request trends by resource\nSeparate account/deployment series, summed within each interval, including failures. These are not combined subscription/model trends. Missing samples are not measured zero."
       }
     },
     {
@@ -347,7 +440,7 @@
         "version": "MetricsItem/2.0",
         "size": 0,
         "chartType": 2,
-        "title": "Account/deployment request trends",
+        "title": "Request trends by resource",
         "resourceIds": [
           "{FoundryResources}"
         ],
@@ -365,17 +458,48 @@
       }
     },
     {
+      "type": 9,
+      "name": "investigation-parameters",
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "FoundryResource",
+            "version": "KqlParameterItem/1.0",
+            "name": "FoundryResource",
+            "type": 5,
+            "label": "Investigate resource",
+            "isRequired": true,
+            "value": "value::1",
+            "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | extend Preferred=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__' | order by Preferred desc, id asc | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__'",
+            "crossComponentResources": [
+              "{Subscriptions}"
+            ],
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "typeSettings": {
+              "additionalResourceOptions": [
+                "value::1"
+              ],
+              "showDefault": false
+            }
+          }
+        ],
+        "style": "pills"
+      }
+    },
+    {
       "type": 1,
       "name": "detail-scope",
       "content": {
-        "json": "### Detail account: {FoundryResource:name}\n`{FoundryResource}`\n\nARM summary tables below use this account only; native metric visuals compare all **Compare accounts** selections."
+        "json": "### Investigate resource: {FoundryResource:name}\n`{FoundryResource}`\n\nARM summary tables below use this account only; estate comparison above remains scoped by **Compare accounts**."
       }
     },
     {
       "type": 1,
       "name": "mix-label",
       "content": {
-        "json": "### Detail account: tokens by deployment\nInput and output totals for **Detail account** only. Blank output means no reported output tokens; embeddings commonly report input only. For charges, use Azure Cost Analysis."
+        "json": "### Tokens by deployment\nInput and output totals for **Investigate resource** only. Blank output means no reported output tokens; embeddings commonly report input only. For charges, use Azure Cost Analysis."
       }
     },
     {
@@ -383,7 +507,7 @@
       "name": "token-input-source",
       "content": {
         "version": "KqlItem/1.0",
-        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"InputTokens\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"FULL\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '*'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[*]\",\"columns\":[{\"path\":\"$.metadatavalues[0].value\",\"columnid\":\"Deployment\",\"columnType\":\"string\"},{\"path\":\"$.data[0].total\",\"columnid\":\"Input tokens\",\"columnType\":\"long\"}]}}]}",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"InputTokens\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"FULL\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '*'\"},{\"key\":\"top\",\"value\":\"1000\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[*]\",\"columns\":[{\"path\":\"$.metadatavalues[0].value\",\"columnid\":\"Deployment\",\"columnType\":\"string\"},{\"path\":\"$.data[0].total\",\"columnid\":\"Input tokens\",\"columnType\":\"long\"}]}}]}",
         "size": 0,
         "timeContextFromParameter": "TimeRange",
         "queryType": 12
@@ -399,7 +523,7 @@
       "name": "token-output-source",
       "content": {
         "version": "KqlItem/1.0",
-        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"OutputTokens\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"FULL\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '*'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[*]\",\"columns\":[{\"path\":\"$.metadatavalues[0].value\",\"columnid\":\"Output deployment\",\"columnType\":\"string\"},{\"path\":\"$.data[0].total\",\"columnid\":\"Output tokens\",\"columnType\":\"long\"}]}}]}",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"OutputTokens\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"FULL\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '*'\"},{\"key\":\"top\",\"value\":\"1000\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[*]\",\"columns\":[{\"path\":\"$.metadatavalues[0].value\",\"columnid\":\"Output deployment\",\"columnType\":\"string\"},{\"path\":\"$.data[0].total\",\"columnid\":\"Output tokens\",\"columnType\":\"long\"}]}}]}",
         "size": 0,
         "timeContextFromParameter": "TimeRange",
         "queryType": 12
@@ -433,7 +557,7 @@
       "type": 1,
       "name": "requests-label",
       "content": {
-        "json": "### Account/deployment request totals (not subscription/model rollups)\nSeparate selected-account/deployment totals, including failures. Use Inference Health for status-code breakdowns."
+        "json": "### Requests by deployment\nSelected investigation resource only, including failures. The estate overview above is unchanged."
       }
     },
     {
@@ -445,7 +569,7 @@
         "size": 0,
         "chartType": 0,
         "resourceIds": [
-          "{FoundryResources}"
+          "{FoundryResource}"
         ],
         "timeContextFromParameter": "TimeRange",
         "resourceType": "microsoft.cognitiveservices/accounts",
@@ -457,7 +581,65 @@
             "splitBy": "ModelDeploymentName",
             "splitByLimit": 1000
           }
-        ]
+        ],
+        "resourceLimit": 10000,
+        "title": "Requests by deployment"
+      }
+    },
+    {
+      "type": 1,
+      "name": "metric-response-label",
+      "content": {
+        "json": "### Selected-resource query coverage\nMetrics List requests up to 1,000 series. A returned count at the cap can mean truncation; the API has no documented next-page/completeness marker. Metric error codes/messages below must not be interpreted as no-data or healthy zeroes. This diagnostic is selected-resource only."
+      }
+    },
+    {
+      "type": 3,
+      "name": "metric-response-status",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"InputTokens,OutputTokens,ModelRequests\"},{\"key\":\"interval\",\"value\":\"FULL\"},{\"key\":\"top\",\"value\":\"1000\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '*'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[*]\",\"columns\":[{\"path\":\"$.name.value\",\"columnid\":\"Metric\",\"columnType\":\"string\"},{\"path\":\"$.errorCode\",\"columnid\":\"Metric result\",\"columnType\":\"string\"},{\"path\":\"$.errorMessage\",\"columnid\":\"Metric error\",\"columnType\":\"string\"},{\"path\":\"$.timeseries.length\",\"columnid\":\"Series returned\",\"columnType\":\"long\"}]}}]}",
+        "queryType": 12,
+        "size": 0,
+        "visualization": "grid"
+      }
+    },
+    {
+      "type": 1,
+      "name": "inventory-label",
+      "content": {
+        "json": "### Inventory and project mappings\nProjects map to parent accounts. Platform metrics are **not project-attributed**. Inventory is RBAC-filtered and may be limited by discovery result caps."
+      }
+    },
+    {
+      "type": 3,
+      "name": "account-inventory",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project Account=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, Region=location, Kind=kind, AccountResourceId=id",
+        "queryType": 1,
+        "size": 0,
+        "visualization": "grid",
+        "crossComponentResources": [
+          "{Subscriptions}"
+        ],
+        "resourceType": "microsoft.resourcegraph/resources"
+      }
+    },
+    {
+      "type": 3,
+      "name": "project-inventory",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts/projects' | extend AccountResourceId=tostring(split(tolower(id), '/projects/')[0]) | where AccountResourceId in~ ({FoundryResources}) | project Project=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, AccountResourceId, ProjectResourceId=id",
+        "queryType": 1,
+        "size": 0,
+        "visualization": "grid",
+        "noDataMessage": "No accessible Foundry projects for the selected accounts.",
+        "crossComponentResources": [
+          "{Subscriptions}"
+        ],
+        "resourceType": "microsoft.resourcegraph/resources"
       }
     }
   ]

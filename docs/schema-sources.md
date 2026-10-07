@@ -13,6 +13,7 @@ References checked: 2026-10-07.
 - [Workbook criteria parameters](https://learn.microsoft.com/azure/azure-monitor/visualize/workbooks-criteria): guarded mathematical expressions for normalized per-minute limits.
 - [Workbook JSONPath transformation](https://learn.microsoft.com/azure/azure-monitor/visualize/workbooks-jsonpath): ARM response-to-table transformation.
 - [Official workbook JSON schema](https://github.com/microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json): chart `customThresholdLine` and parameter criteria shape.
+- [Workbook resource parameters](https://learn.microsoft.com/azure/azure-monitor/visualize/workbooks-resources) and [dropdown special selections](https://learn.microsoft.com/azure/azure-monitor/visualize/workbooks-dropdowns): dynamic resource binding, native All, defaults and intersection on dependent refresh.
 
 ## Signals used
 
@@ -23,11 +24,13 @@ References checked: 2026-10-07.
 | `ModelAvailabilityRate` | Percent | Average, Minimum | `ModelDeploymentName` |
 | `TimeToResponse` | Milliseconds | Average, Maximum | `ModelDeploymentName` |
 | `AzureOpenAITimeToResponse` | Milliseconds | Average, Maximum | `ModelDeploymentName` |
-| `ProvisionedUtilization` | Percent | Average, Maximum | Single selected `ModelDeploymentName` |
+| `ProvisionedUtilization` | Percent | Average, Maximum | `ModelDeploymentName` in estate comparison; single selected deployment in minute detail |
 
 Native metric charts use workbook aggregation codes `1` (Total) and `4` (Average). Summary tables call the account's metrics REST endpoint with `interval=FULL` for the selected range and a wildcard deployment filter. Each summary row represents one deployment's reported values, not an individual request.
 
-The focused workbook explicitly requests up to 1,000 deployment series in both trends and summaries; its summaries do not inherit the REST API's default top-10 limit.
+All shipped wildcard REST metrics queries explicitly request `top=1000`, including Fleet's original token input/output sources and Health's deployment/status query. Native splits also request 1,000 series. The REST API defaults to ten when a filter is present, and its documented response has no pagination/completeness field. Requesting 1,000 is not proof of complete results: a count at the cap is suspicious, but fewer results do not prove tenant-wide completeness. Selected-resource response diagnostics expose metric error codes/messages and returned-series counts without converting failures to zero.
+
+Comparison grids use flat full-ID resource/deployment rows with `timeGrain=FULL` scalar results and hidden timeline columns. They have no cross-resource average hierarchy: availability and first-response averages are not averaged again into an estate SLO. Native resource/grid limits are 10,000; discovery result limits and interactive query fan-out can be reached earlier.
 
 Requests include unsuccessful responses. Availability is `(total calls - server errors) / total calls`, expressed as a percentage; server errors are HTTP 5xx. HTTP 4xx and throttling (429) do not reduce this signal. Average/minimum values are platform aggregates, not an independently calculated, request-weighted SLO.
 
@@ -49,10 +52,14 @@ The deployment picker uses ARM deployments list, with full deployment resource I
 
 Portal verification also confirmed that an empty static result invalidates the entire criteria parameter, even when that rule does not match. Guards and the default therefore return the explicit text `Unavailable`, not an empty string or zero. Capacity time ranges are capped at six days (8,640 one-minute points) because the portal timechart rejects more than 10,000 points per series.
 
-The capacity charts use Metrics List with `interval=PT1M` and `autoAdjustTimegrain=false`, a single deployment filter, and JSONPath `$.value[0].timeseries[0].data[*]`. Columns extract `timeStamp` and the actual `total`, `average`, or `maximum` without filling gaps. Workbook-supported `customThresholdLine` references the normalized current limit; PTU uses the documented 100% reference. One-minute samples are not converted from range totals. ARM/API permission errors remain errors.
+The capacity charts use Metrics List with `interval=PT1M` and `autoAdjustTimegrain=false`, a single deployment filter, and JSONPath `$.value[0].timeseries[0].data[*]`. Columns extract `timeStamp` and actual `total`, `average`, or `maximum` without filling gaps. Numeric-limit charts use `customThresholdLine`; complementary `Unavailable` branches omit that property entirely, rather than relying on parsing nonnumeric text. PTU uses the documented 100% reference. One-minute samples are not converted from range totals. ARM/API permission errors remain errors.
 
 No deployment-name join is used for capacity. The full selected ARM deployment resource ID scopes the capacity lookup, and its account scopes the metric request. The deployment dropdown explicitly returns ARM `$.id` as value and `$.name` as label; metric filters use `{Deployment:label}`, not the resource picker's `:name` formatter (which does not parse a dropdown value). Hidden ARM text parameters use scalar JSONPath projections with no column definitions, following the official ARM text-parameter pattern. A live uppercase deployment-name filter matched a lowercased metric dimension value, confirming the service's case-insensitive filter behavior. Native multi-account metric charts retain separate resource series, so same-named deployments in two accounts are not merged. ARM detail tables remain account-scoped.
 
 Resource Graph inventory filters selected subscriptions/accounts and discovers projects by type `microsoft.cognitiveservices/accounts/projects`, not project kind. The parent account ID is the case-normalized prefix before `/projects/`. This relationship is metadata, not project-specific metric attribution.
+
+**Native All versus snapshot defaults:** the comparison resource parameter stores `value: ["value::all"]`, includes the All special option, and deliberately has no `selectAllValue` wildcard. Native resource binding expands All to actual discovered IDs for metrics and dependent ARG queries. Setting every query row `selected=true` alone would only establish defaults, not persistent All on refresh. Manual selections use the documented intersection with refreshed query results; the investigation picker depends on that set. Deployment defaults use a truthy third `selected` result column, not the dropdown's Any-one marker: a special-selection label would incorrectly send `Any one` in `{Deployment:label}` metric filters.
+
+**Capacity enumeration limitation (2026-10-07):** ARG account discovery returned 17 eligible accounts; the `accounts/deployments` entity returned none. This is child indexing, not unavailable ARM configuration. Correct-tenant ARM backend batch reads returned 17 successful responses and 56 deployments, including GlobalStandard limits. However, the native Workbook ARM provider rejected both `/batch` and its absolute URL with `Path must be for an Azure Resource`. The user approved traffic/PTU estate comparison plus deployment-level TPM/RPM drilldown instead. Rejected batch prototypes are not shipped, and the overview is not presented as fleet-wide pay-as-you-go allocated-limit comparison.
 
 The portal subscription picker emits `/subscriptions/<guid>` resource IDs, while Resource Graph `subscriptionId` is a bare GUID. Shared filters accept both forms, and the picker default uses the resource-ID form. This was verified with the actual portal substitution and a live Resource Graph query, not only a bare-GUID CLI query.

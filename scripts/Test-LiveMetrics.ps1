@@ -37,6 +37,14 @@ foreach ($account in $AccountResourceIds) {
         if ($LASTEXITCODE -ne 0) { throw "Metric read failed: $account / $metric" }
         $result = $raw | ConvertFrom-Json
         if ($result.interval -ne 'PT1M') { throw "Unexpected metric interval: $($result.interval)" }
+        foreach ($value in $result.value) {
+            if ($value.errorCode -and $value.errorCode -ne 'Success') {
+                throw "Metric error for $account / $metric : $($value.errorCode) $($value.errorMessage)"
+            }
+        }
+        if (@($result.value[0].timeseries).Count -ge 1000) {
+            Write-Warning "Returned 1000 series for $account / $metric. Coverage may be truncated; Metrics List has no documented pagination/completeness marker."
+        }
         foreach ($series in $result.value[0].timeseries) {
             $name = ($series.metadatavalues | Where-Object { $_.name.value -ieq 'ModelDeploymentName' }).value
             if (-not $byName.ContainsKey($name)) { throw "Metric deployment has no current ARM deployment: $account / $name" }

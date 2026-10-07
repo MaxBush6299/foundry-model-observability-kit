@@ -77,6 +77,83 @@ class WorkbookTests(unittest.TestCase):
             for param in item["content"]["parameters"]
         }
 
+    def test_native_all_defaults_and_isolated_cascading_detail(self):
+        for book in self.books.values():
+            params = {p["name"]: p for i in book["items"] if i["type"] == 9
+                      for p in i["content"]["parameters"]}
+            comparison = params["FoundryResources"]
+            self.assertEqual(["value::all"], comparison["value"])
+            self.assertEqual(["value::all"],
+                             comparison["typeSettings"]["additionalResourceOptions"])
+            self.assertNotIn("selectAllValue", comparison["typeSettings"])
+            self.assertIn("selected=false", comparison["query"])
+            self.assertNotIn("value::all", params["Subscriptions"]["value"])
+            self.assertIn("id in~ ({FoundryResources})", params["FoundryResource"]["query"])
+            names = [i["name"] for i in book["items"]]
+            self.assertLess(names.index("resource-comparison"),
+                            names.index("investigation-parameters"))
+            self.assertLess(names.index("investigation-parameters"),
+                            names.index("account-inventory"))
+            for i in book["items"][:names.index("investigation-parameters")]:
+                self.assertNotIn("{FoundryResource}", json.dumps(i))
+                self.assertNotIn("{Deployment}", json.dumps(i))
+
+    def test_shipped_wildcard_rest_queries_explicitly_request_1000_series(self):
+        required = {"token-input-source", "token-output-source", "status-by-deployment"}
+        found = set()
+        for book in self.books.values():
+            for item in book["items"]:
+                if item["type"] != 3 or item["content"].get("queryType") != 12:
+                    continue
+                spec = json.loads(item["content"]["query"])
+                args = {p["key"]: p["value"] for p in spec["urlParams"]}
+                if "/metrics" in spec["path"] and "eq '*'" in args.get("$filter", ""):
+                    self.assertEqual("1000", args.get("top"), item["name"])
+                    found.add(item["name"])
+        self.assertTrue(required <= found)
+
+    def test_unavailable_limits_select_charts_without_thresholds(self):
+        items = {i["name"]: i for i in self.capacity["items"]}
+        for name, limit in (("tokens-vs-tpm", "TPM"), ("requests-vs-rpm", "RPM")):
+            numeric, unavailable = items[name], items[name + "-unavailable"]
+            self.assertEqual("{" + limit + "}",
+                             numeric["content"]["chartSettings"]["customThresholdLine"])
+            self.assertNotIn("customThresholdLine",
+                             unavailable["content"]["chartSettings"])
+            for item, comparison in ((numeric, "isNotEqualTo"),
+                                     (unavailable, "isEqualTo")):
+                self.assertEqual({"parameterName": limit, "comparison": comparison,
+                                  "value": "Unavailable"}, item["conditionalVisibility"])
+            self.assertEqual(numeric["content"]["query"], unavailable["content"]["query"])
+
+    def test_comparison_grids_do_not_average_across_resource_rows(self):
+        for book in self.books.values():
+            for item in book["items"]:
+                if item["name"] not in ("resource-comparison", "deployment-comparison",
+                                        "ptu-comparison"):
+                    continue
+                settings = item["content"]["gridSettings"]
+                self.assertNotIn("hierarchySettings", settings)
+                self.assertEqual("FULL", item["content"]["timeGrain"])
+                self.assertFalse(any("aggregation" in f.get("formatOptions", {})
+                                     for f in settings["formatters"]))
+                renderer = next(f for f in settings["formatters"]
+                                if f["columnMatch"] == "Name")
+                self.assertEqual(13, renderer["formatter"])
+                self.assertEqual(False, renderer["formatOptions"]["showIcon"])
+                labels = {row["columnId"]: row["label"] for row in settings["labelSettings"]}
+                self.assertEqual("Subscription", labels["Subscription"])
+                self.assertEqual("Resource", labels["Name"])
+
+    def test_capacity_fallback_is_explicit_and_has_no_rejected_batch_prototype(self):
+        source = json.dumps(self.capacity)
+        self.assertNotIn('"/batch"', source)
+        self.assertNotIn("CapacityRequests", source)
+        by_name = {i["name"]: i for i in self.capacity["items"]}
+        self.assertIn("selected deployment below",
+                      by_name["capacity-scope-limit"]["content"]["json"])
+        self.assertEqual(3, by_name["ptu-comparison"]["content"]["metrics"][0]["aggregation"])
+
     def test_four_books_and_idempotent_generation(self):
         self.assertEqual(4, len(self.books))
         self.assertEqual(self.capacity, builder.capacity_workbook())
@@ -88,17 +165,23 @@ class WorkbookTests(unittest.TestCase):
         for book in self.books.values():
             names = {item["name"] for item in book["items"]}
             self.assertTrue({"account-inventory", "project-inventory"} <= names)
-            params = next(item["content"]["parameters"] for item in book["items"]
-                          if item["type"] == 9)
+            params = [p for item in book["items"] if item["type"] == 9
+                      for p in item["content"]["parameters"]]
             by_name = {param["name"]: param for param in params}
             self.assertTrue(by_name["FoundryResources"]["multiSelect"])
             self.assertIn("id in~ ({FoundryResources})", by_name["FoundryResource"]["query"])
-            for item in book["items"]:
+            detail_index = next(n for n, item in enumerate(book["items"])
+                                if item["name"] == "investigation-parameters")
+            for index, item in enumerate(book["items"]):
                 if item["type"] == 10:
-                    self.assertEqual(["{FoundryResources}"], item["content"]["resourceIds"])
+                    expected = "{FoundryResources}" if index < detail_index else "{FoundryResource}"
+                    if item["name"] in ("compare-tokens", "compare-requests"):
+                        expected = "{FoundryResources}"
+                    self.assertEqual([expected], item["content"]["resourceIds"])
                 if item["type"] == 3 and item["content"]["queryType"] == 12:
                     path = json.loads(item["content"]["query"])["path"]
-                    self.assertTrue(path.startswith("{FoundryResource}") or path == "{Deployment}")
+                    self.assertTrue(path.startswith("{FoundryResource}") or
+                                    path in ("{Deployment}", "/batch"))
             projects = next(item for item in book["items"] if item["name"] == "project-inventory")
             self.assertIn("accounts/projects", projects["content"]["query"])
             self.assertNotIn("kind", projects["content"]["query"])
@@ -203,6 +286,9 @@ class WorkbookTests(unittest.TestCase):
                 self.assertNotEqual(7, item["content"]["queryType"])
 
     def test_dropdown_browser_value_label_and_scalar_text_contract(self):
+        self.assertNotEqual("value::1", self.params["Deployment"].get("value"))
+        dropdown = json.loads(self.params["Deployment"]["query"])
+        self.assertEqual("$.name", dropdown["transformers"][0]["settings"]["columns"][2]["path"])
         value = "/subscriptions/s/resourceGroups/r/providers/Microsoft.CognitiveServices/accounts/a/deployments/MixedCase"
         label = "MixedCase"
         for name in ("TokenCount", "TokenWindow", "RequestCount", "RequestWindow"):
@@ -278,7 +364,8 @@ class WorkbookTests(unittest.TestCase):
             self.assertEqual(["{FoundryResources}"], by_name[name]["content"]["resourceIds"])
             self.assertEqual("ModelDeploymentName",
                              by_name[name]["content"]["metrics"][0]["splitBy"])
-            self.assertIn("Account/deployment", by_name[name]["content"]["title"])
+            expected = "Request trends by resource" if name == "request-trend" else "Account/deployment"
+            self.assertIn(expected, by_name[name]["content"]["title"])
         names = list(by_name)
         self.assertLess(names.index("subscription-model-totals"), names.index("token-trend"))
         self.assertTrue({"token-input-source", "token-output-source", "token-mix", "requests"}

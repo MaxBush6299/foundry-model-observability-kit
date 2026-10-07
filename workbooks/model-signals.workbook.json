@@ -9,7 +9,7 @@
       "type": 1,
       "name": "intro",
       "content": {
-        "json": "## Foundry Model Volume, Latency & Availability\nThree operational signals from Azure Monitor metrics, broken down by model deployment. No diagnostic logs or Application Insights required. Start with the last 24 hours to spot traffic spikes, slow responses, and availability dips. Each visual requests up to 1,000 deployment series. Blank charts or cells mean **no reported samples**, not zero traffic or perfect health."
+        "json": "## Foundry Model Volume, Latency & Availability\nCompare the selected estate first, sort resource/deployment signals to identify outliers, then investigate one resource below. Missing samples are not zero traffic, zero errors, or perfect availability. Platform metrics require no diagnostic export or agent traces."
       }
     },
     {
@@ -45,31 +45,20 @@
             "multiSelect": true,
             "quote": "'",
             "delimiter": ",",
-            "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__', group=subscriptionId",
+            "value": [
+              "value::all"
+            ],
+            "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=false, group=subscriptionId",
             "crossComponentResources": [
               "{Subscriptions}"
             ],
             "queryType": 1,
             "resourceType": "microsoft.resourcegraph/resources",
             "typeSettings": {
-              "additionalResourceOptions": []
-            }
-          },
-          {
-            "id": "FoundryResource",
-            "version": "KqlParameterItem/1.0",
-            "name": "FoundryResource",
-            "type": 5,
-            "label": "Detail account",
-            "isRequired": true,
-            "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__'",
-            "crossComponentResources": [
-              "{Subscriptions}"
-            ],
-            "queryType": 1,
-            "resourceType": "microsoft.resourcegraph/resources",
-            "typeSettings": {
-              "additionalResourceOptions": []
+              "additionalResourceOptions": [
+                "value::all"
+              ],
+              "showDefault": false
             }
           },
           {
@@ -118,45 +107,286 @@
       "type": 1,
       "name": "scope-notes",
       "content": {
-        "json": "### Subscription comparison and account drilldown\n**Compare accounts** supports multiple accounts in the selected subscriptions. Native metrics retain separate resource/deployment series; matching deployment names in different accounts are not joined. **Detail account** selects one of those accounts for ARM summary tables and capacity drilldown.\n\nOnly RBAC-accessible resources are discoverable. Project inventory is metadata: metrics belong to the parent account/deployment and are **not project-attributed**."
+        "json": "### Subscription comparison and account drilldown\n**Compare accounts: All** includes all eligible discovered accounts in the explicitly selected subscriptions, including new accounts on scope refresh. Choose a manual subset to filter comparison; return to **All** for broad scope. **Investigate resource** below never narrows the overview. Changing comparison scope removes out-of-scope detail selections.\n\nOnly RBAC-accessible accounts are discoverable. Queries request up to **1,000 series per resource/metric**; this is a cap, not proof of complete results. Discovery and grids also have limits; reduce scope/range for large estates. Blank cells/no data are not healthy zeroes; query errors must be investigated."
       }
     },
     {
-      "type": 3,
-      "name": "account-inventory",
+      "type": 1,
+      "name": "comparison-label",
       "content": {
-        "version": "KqlItem/1.0",
-        "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project Account=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, Region=location, Kind=kind, AccountResourceId=id",
-        "queryType": 1,
-        "size": 0,
-        "visualization": "grid",
-        "crossComponentResources": [
-          "{Subscriptions}"
-        ],
-        "resourceType": "microsoft.resourcegraph/resources"
+        "json": "### Compare the estate\nSort resource values to identify outliers, then investigate a resource below. Resource links use full IDs; hover for subscription/resource-group context when names collide. Missing values remain unavailable. No statistical anomaly detector or averages-of-averages across resources are used."
       }
     },
     {
-      "type": 3,
-      "name": "project-inventory",
+      "type": 10,
+      "name": "resource-comparison",
       "content": {
-        "version": "KqlItem/1.0",
-        "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts/projects' | extend AccountResourceId=tostring(split(tolower(id), '/projects/')[0]) | where AccountResourceId in~ ({FoundryResources}) | project Project=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, AccountResourceId, ProjectResourceId=id",
-        "queryType": 1,
+        "version": "MetricsItem/2.0",
+        "chartId": "admin-resource-comparison",
         "size": 0,
-        "visualization": "grid",
-        "noDataMessage": "No accessible Foundry projects for the selected accounts.",
-        "crossComponentResources": [
-          "{Subscriptions}"
+        "chartType": 0,
+        "gridFormatType": 2,
+        "resourceLimit": 10000,
+        "resourceIds": [
+          "{FoundryResources}"
         ],
-        "resourceType": "microsoft.resourcegraph/resources"
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "timeContextFromParameter": "TimeRange",
+        "timeGrain": "FULL",
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelRequests",
+            "aggregation": 1,
+            "splitByLimit": 1000
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+            "aggregation": 4,
+            "splitByLimit": 1000
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+            "aggregation": 4,
+            "splitByLimit": 1000
+          }
+        ],
+        "title": "Resource Comparison",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Name",
+              "formatter": 13,
+              "formatOptions": {
+                "showIcon": false
+              }
+            },
+            {
+              "columnMatch": "Subscription",
+              "formatter": 13,
+              "formatOptions": {
+                "showIcon": false
+              }
+            },
+            {
+              "columnMatch": "Segment",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--{LatencyMetric} Timeline",
+              "formatter": 5
+            }
+          ],
+          "labelSettings": [
+            {
+              "columnId": "Subscription",
+              "label": "Subscription"
+            },
+            {
+              "columnId": "Name",
+              "label": "Resource"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "label": "Requests"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+              "label": "Reported availability (%)"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+              "label": "First-response latency (ms)"
+            }
+          ],
+          "rowLimit": 10000,
+          "filter": true
+        }
+      }
+    },
+    {
+      "type": 1,
+      "name": "deployment-comparison-label",
+      "content": {
+        "json": "### Compare resource/deployment signals\nEach row retains account identity and the reported deployment dimension. Availability is 5xx-only, not a 4xx/429 SLO. Latency is first response, not completion or p95. Blank rows do not establish healthy zeroes."
+      }
+    },
+    {
+      "type": 10,
+      "name": "deployment-comparison",
+      "content": {
+        "version": "MetricsItem/2.0",
+        "chartId": "admin-deployment-comparison",
+        "size": 0,
+        "chartType": 0,
+        "gridFormatType": 2,
+        "resourceLimit": 10000,
+        "resourceIds": [
+          "{FoundryResources}"
+        ],
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "timeContextFromParameter": "TimeRange",
+        "timeGrain": "FULL",
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelRequests",
+            "aggregation": 1,
+            "splitByLimit": 1000,
+            "splitBy": [
+              "ModelDeploymentName"
+            ]
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+            "aggregation": 4,
+            "splitByLimit": 1000,
+            "splitBy": [
+              "ModelDeploymentName"
+            ]
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+            "aggregation": 4,
+            "splitByLimit": 1000,
+            "splitBy": [
+              "ModelDeploymentName"
+            ]
+          }
+        ],
+        "title": "Deployment Comparison",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Name",
+              "formatter": 13,
+              "formatOptions": {
+                "showIcon": false
+              }
+            },
+            {
+              "columnMatch": "Subscription",
+              "formatter": 13,
+              "formatOptions": {
+                "showIcon": false
+              }
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--{LatencyMetric} Timeline",
+              "formatter": 5
+            }
+          ],
+          "labelSettings": [
+            {
+              "columnId": "Subscription",
+              "label": "Subscription"
+            },
+            {
+              "columnId": "Name",
+              "label": "Resource"
+            },
+            {
+              "columnId": "Segment",
+              "label": "Deployment"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "label": "Requests"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+              "label": "Reported availability (%)"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+              "label": "First-response latency (ms)"
+            }
+          ],
+          "rowLimit": 10000,
+          "filter": true
+        }
+      }
+    },
+    {
+      "type": 9,
+      "name": "investigation-parameters",
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "FoundryResource",
+            "version": "KqlParameterItem/1.0",
+            "name": "FoundryResource",
+            "type": 5,
+            "label": "Investigate resource",
+            "isRequired": true,
+            "value": "value::1",
+            "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | extend Preferred=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__' | order by Preferred desc, id asc | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__'",
+            "crossComponentResources": [
+              "{Subscriptions}"
+            ],
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "typeSettings": {
+              "additionalResourceOptions": [
+                "value::1"
+              ],
+              "showDefault": false
+            }
+          }
+        ],
+        "style": "pills"
       }
     },
     {
       "type": 1,
       "name": "detail-scope",
       "content": {
-        "json": "### Detail account: {FoundryResource:name}\n`{FoundryResource}`\n\nARM summary tables below use this account only; native metric visuals compare all **Compare accounts** selections."
+        "json": "### Investigate resource: {FoundryResource:name}\n`{FoundryResource}`\n\nARM summary tables below use this account only; estate comparison above remains scoped by **Compare accounts**."
       }
     },
     {
@@ -175,7 +405,7 @@
         "size": 0,
         "chartType": 2,
         "resourceIds": [
-          "{FoundryResources}"
+          "{FoundryResource}"
         ],
         "timeContextFromParameter": "TimeRange",
         "resourceType": "microsoft.cognitiveservices/accounts",
@@ -187,7 +417,8 @@
             "splitByLimit": 1000,
             "splitBy": "ModelDeploymentName"
           }
-        ]
+        ],
+        "resourceLimit": 10000
       }
     },
     {
@@ -218,7 +449,7 @@
         "size": 0,
         "chartType": 2,
         "resourceIds": [
-          "{FoundryResources}"
+          "{FoundryResource}"
         ],
         "timeContextFromParameter": "TimeRange",
         "resourceType": "microsoft.cognitiveservices/accounts",
@@ -230,7 +461,8 @@
             "splitByLimit": 1000,
             "splitBy": "ModelDeploymentName"
           }
-        ]
+        ],
+        "resourceLimit": 10000
       },
       "conditionalVisibility": {
         "parameterName": "LatencyMetric",
@@ -247,7 +479,7 @@
         "size": 0,
         "chartType": 2,
         "resourceIds": [
-          "{FoundryResources}"
+          "{FoundryResource}"
         ],
         "timeContextFromParameter": "TimeRange",
         "resourceType": "microsoft.cognitiveservices/accounts",
@@ -259,7 +491,8 @@
             "splitByLimit": 1000,
             "splitBy": "ModelDeploymentName"
           }
-        ]
+        ],
+        "resourceLimit": 10000
       },
       "conditionalVisibility": {
         "parameterName": "LatencyMetric",
@@ -295,7 +528,7 @@
         "size": 0,
         "chartType": 2,
         "resourceIds": [
-          "{FoundryResources}"
+          "{FoundryResource}"
         ],
         "timeContextFromParameter": "TimeRange",
         "resourceType": "microsoft.cognitiveservices/accounts",
@@ -307,7 +540,8 @@
             "splitByLimit": 1000,
             "splitBy": "ModelDeploymentName"
           }
-        ]
+        ],
+        "resourceLimit": 10000
       }
     },
     {
@@ -320,6 +554,62 @@
         "timeContextFromParameter": "TimeRange",
         "queryType": 12,
         "visualization": "grid"
+      }
+    },
+    {
+      "type": 1,
+      "name": "metric-response-label",
+      "content": {
+        "json": "### Selected-resource query coverage\nMetrics List requests up to 1,000 series. A returned count at the cap can mean truncation; the API has no documented next-page/completeness marker. Metric error codes/messages below must not be interpreted as no-data or healthy zeroes. This diagnostic is selected-resource only."
+      }
+    },
+    {
+      "type": 3,
+      "name": "metric-response-status",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"ModelRequests,ModelAvailabilityRate,{LatencyMetric}\"},{\"key\":\"interval\",\"value\":\"FULL\"},{\"key\":\"top\",\"value\":\"1000\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '*'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[*]\",\"columns\":[{\"path\":\"$.name.value\",\"columnid\":\"Metric\",\"columnType\":\"string\"},{\"path\":\"$.errorCode\",\"columnid\":\"Metric result\",\"columnType\":\"string\"},{\"path\":\"$.errorMessage\",\"columnid\":\"Metric error\",\"columnType\":\"string\"},{\"path\":\"$.timeseries.length\",\"columnid\":\"Series returned\",\"columnType\":\"long\"}]}}]}",
+        "queryType": 12,
+        "size": 0,
+        "visualization": "grid"
+      }
+    },
+    {
+      "type": 1,
+      "name": "inventory-label",
+      "content": {
+        "json": "### Inventory and project mappings\nProjects map to parent accounts. Platform metrics are **not project-attributed**. Inventory is RBAC-filtered and may be limited by discovery result caps."
+      }
+    },
+    {
+      "type": 3,
+      "name": "account-inventory",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project Account=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, Region=location, Kind=kind, AccountResourceId=id",
+        "queryType": 1,
+        "size": 0,
+        "visualization": "grid",
+        "crossComponentResources": [
+          "{Subscriptions}"
+        ],
+        "resourceType": "microsoft.resourcegraph/resources"
+      }
+    },
+    {
+      "type": 3,
+      "name": "project-inventory",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts/projects' | extend AccountResourceId=tostring(split(tolower(id), '/projects/')[0]) | where AccountResourceId in~ ({FoundryResources}) | project Project=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, AccountResourceId, ProjectResourceId=id",
+        "queryType": 1,
+        "size": 0,
+        "visualization": "grid",
+        "noDataMessage": "No accessible Foundry projects for the selected accounts.",
+        "crossComponentResources": [
+          "{Subscriptions}"
+        ],
+        "resourceType": "microsoft.resourcegraph/resources"
       }
     }
   ]
