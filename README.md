@@ -1,27 +1,31 @@
 # Foundry Model Observability Kit
 
-Three deployable **model-only Azure Monitor workbooks** for Microsoft Foundry and Azure OpenAI accounts. This kit uses platform metrics directly: no Application Insights, Log Analytics workspace, tracing, or diagnostic export is required or provisioned.
+Four deployable **model-only Azure Monitor workbooks** for Microsoft Foundry and Azure OpenAI accounts. This kit uses platform metrics directly: no Application Insights, Log Analytics workspace, tracing, or diagnostic export is required or provisioned.
 
 | Workbook | Focus |
 | --- | --- |
 | **Model Fleet & Usage** | Token trends, input/output token totals, and request volume by deployment |
 | **Model Inference Health** | HTTP response trends, account-wide and per-deployment status counts, reported availability, and response time |
 | **Model Volume, Latency & Availability** | A focused operational view with three deployment-level trends and summary tables: request totals, average/maximum gateway latency, and average/minimum reported availability |
+| **Model Usage vs Capacity** | One-minute processed tokens vs current allocated TPM (approximate), requests vs RPM equivalent, PTU utilization vs 100%, and HTTP 429 counts |
 
-The focused workbook defaults to the last **24 hours**, making it easy to compare traffic spikes, slow responses, and brief availability dips. Its visuals request up to 1,000 deployment series. All workbooks include Foundry account and time-range pickers.
+The operational workbook defaults to **24 hours**; capacity drilldown defaults to **one hour** and offers up to 24 hours at one-minute resolution. All workbooks include subscription, multi-account comparison, detail-account, and time-range pickers, plus account and project inventory. Native metric visuals retain separate account/deployment series and request up to 1,000 deployment series per resource.
+
+**Admin scope:** select subscriptions, then select multiple **Compare accounts** entries to compare their metrics. **Detail account** picks one of those accounts for ARM summary tables; Usage vs Capacity also has a deployment picker. Account inventory includes full resource IDs so identical account/deployment names are not mistaken for the same resource. Project inventory lists `Microsoft.CognitiveServices/accounts/projects` and its parent account. Account/deployment metrics are **not attributed to individual projects** that share an account. Discovery is limited by RBAC and the portal's available subscriptions, not a complete tenant inventory.
 
 ## Prerequisites
 
 - An existing `Microsoft.CognitiveServices/accounts` resource of kind `AIServices` or `OpenAI`, with model deployments and traffic in the selected range.
 - Permission to deploy workbooks in the target resource group.
 - **Monitoring Reader** (or equivalent metrics-read access) on the selected account, plus Reader access to the saved workbooks.
+- Resource-read access on selected accounts/projects and `Microsoft.CognitiveServices/accounts/deployments/read` for capacity configuration.
 - [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), authenticated with `az login`. Azure Developer CLI is needed only for the optional `azd` deployment below.
 
 See [prerequisites](docs/prerequisites.md) for permissions and metric coverage.
 
 ## Deploy
 
-Deploy all three workbooks into an existing resource group:
+Deploy all four workbooks into an existing resource group:
 
 ```powershell
 $modelId = az resource show --resource-group "<account-rg>" `
@@ -34,7 +38,7 @@ az deployment group create `
   --parameters modelAccountResourceId="$modelId"
 ```
 
-The account can be in a different resource group. `infra\model-workbooks.bicep` is also a standalone entrypoint with the same inputs and outputs.
+The account can be in a different resource group. Its subscription initializes the subscription picker; other accessible subscriptions can be selected in the workbook. `infra\model-workbooks.bicep` is also a standalone entrypoint with the same inputs and outputs.
 
 ### Optional: Azure Developer CLI
 
@@ -58,8 +62,17 @@ Both deployment entrypoints return:
 - `modelFleetWorkbookResourceId`
 - `modelHealthWorkbookResourceId`
 - `modelSignalsWorkbookResourceId`
+- `modelCapacityWorkbookResourceId`
 
-Optional `sharedViewerPrincipalObjectIds` and `sharedViewerPrincipalType` inputs grant Reader on **all three workbooks**. They do not grant access to the account's metrics; grant that separately. See the [deployment and validation guide](docs/deployment-and-validation.md).
+Optional `sharedViewerPrincipalObjectIds` and `sharedViewerPrincipalType` inputs grant Reader on **all four workbooks**. They do not grant access to the account's metrics or deployment configuration; grant that separately. See the [deployment and validation guide](docs/deployment-and-validation.md).
+
+## Usage versus capacity
+
+The capacity workbook reads **current deployment rate limits** from ARM, without converting SKU capacity units. TPM/RPM equivalents are `60 * count / renewalPeriod` using each reported token/request rule. Ten requests per ten seconds means 60 RPM equivalent, but not a permitted burst of 60 requests. Missing limits stay blank; no SKU multiplier or fabricated capacity is substituted.
+
+Processed `TotalTokens` per minute is an **approximate** comparison with allocated TPM: Azure throttles using arrival-time estimated tokens, including requested output, rather than processed totals. Request limits can be enforced over sub-minute windows; dynamic throttling and bursts can produce 429s below the line. PTU uses `ProvisionedUtilization` against 100%, with average and maximum samples. Non-PTU/no-sample deployments do not establish zero utilization.
+
+Horizontal reference lines use capacity read **now**, not the historical limit at each timestamp. This is deployment usage versus capacity, **not subscription assigned quota** or billed cost. The workbook never aggregates hourly token totals against a per-minute limit.
 
 ## Interpreting the three signals
 
@@ -92,9 +105,11 @@ Metrics are collected automatically. Do not rely on `AzureDiagnostics` or export
 ```text
 azure.yaml                  # Optional azd project
 infra/main.bicep             # Model-only deployment entrypoint
-infra/model-workbooks.bicep  # Three workbooks and optional viewer roles
+infra/model-workbooks.bicep  # Four workbooks and optional viewer roles
 workbooks/                  # Azure Monitor workbook JSON definitions
 docs/                       # Prerequisites, metric references, and validation
+scripts/build_workbooks.py   # Idempotent common scope and capacity workbook generation
+tests/                      # Definition, identity, normalization, and null-semantics checks
 ```
 
 Derived from [Foundry Observability Kit](https://github.com/MaxBush6299/foundry-observability-kit). This standalone edition retains the model workbooks and removes the tracing-based dashboards and monitoring infrastructure.

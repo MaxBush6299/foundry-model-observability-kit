@@ -1,7 +1,9 @@
 {
   "version": "Notebook/1.0",
   "isLocked": false,
-  "fallbackResourceIds": [ "__MODEL_ACCOUNT_RESOURCE_ID__" ],
+  "fallbackResourceIds": [
+    "__MODEL_ACCOUNT_RESOURCE_ID__"
+  ],
   "items": [
     {
       "type": 1,
@@ -15,20 +17,60 @@
       "name": "parameters",
       "content": {
         "version": "KqlParameterItem/1.0",
-        "crossComponentResources": [ "value::selected" ],
+        "crossComponentResources": [
+          "value::selected"
+        ],
         "parameters": [
           {
-            "id": "fleet-resource",
+            "id": "Subscriptions",
+            "version": "KqlParameterItem/1.0",
+            "name": "Subscriptions",
+            "type": 6,
+            "label": "Subscriptions",
+            "isRequired": true,
+            "multiSelect": true,
+            "quote": "'",
+            "delimiter": ",",
+            "value": [
+              "__MODEL_ACCOUNT_SUBSCRIPTION_ID__"
+            ]
+          },
+          {
+            "id": "FoundryResources",
+            "version": "KqlParameterItem/1.0",
+            "name": "FoundryResources",
+            "type": 5,
+            "label": "Compare accounts",
+            "isRequired": true,
+            "multiSelect": true,
+            "quote": "'",
+            "delimiter": ",",
+            "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__', group=subscriptionId",
+            "crossComponentResources": [
+              "{Subscriptions}"
+            ],
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "typeSettings": {
+              "additionalResourceOptions": []
+            }
+          },
+          {
+            "id": "FoundryResource",
             "version": "KqlParameterItem/1.0",
             "name": "FoundryResource",
-            "label": "Foundry resource",
             "type": 5,
+            "label": "Detail account",
             "isRequired": true,
-            "query": "resources | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | project value = id, label = name, selected = id =~ '__MODEL_ACCOUNT_RESOURCE_ID__', group = resourceGroup",
-            "crossComponentResources": [ "value::selected" ],
-            "typeSettings": { "additionalResourceOptions": [] },
+            "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__'",
+            "crossComponentResources": [
+              "{Subscriptions}"
+            ],
             "queryType": 1,
-            "resourceType": "microsoft.resourcegraph/resources"
+            "resourceType": "microsoft.resourcegraph/resources",
+            "typeSettings": {
+              "additionalResourceOptions": []
+            }
           },
           {
             "id": "fleet-time",
@@ -41,10 +83,18 @@
             },
             "typeSettings": {
               "selectableValues": [
-                { "durationMs": 3600000 },
-                { "durationMs": 86400000 },
-                { "durationMs": 604800000 },
-                { "durationMs": 2592000000 }
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 2592000000
+                }
               ]
             }
           }
@@ -56,8 +106,55 @@
     },
     {
       "type": 1,
+      "name": "scope-notes",
+      "content": {
+        "json": "### Subscription comparison and account drilldown\n**Compare accounts** supports multiple accounts in the selected subscriptions. Native metrics retain separate resource/deployment series; matching deployment names in different accounts are not joined. **Detail account** selects one of those accounts for ARM summary tables and capacity drilldown.\n\nOnly RBAC-accessible resources are discoverable. Project inventory is metadata: metrics belong to the parent account/deployment and are **not project-attributed**."
+      }
+    },
+    {
+      "type": 3,
+      "name": "account-inventory",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project Account=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, Region=location, Kind=kind, AccountResourceId=id",
+        "queryType": 1,
+        "size": 0,
+        "visualization": "grid",
+        "crossComponentResources": [
+          "{Subscriptions}"
+        ],
+        "resourceType": "microsoft.resourcegraph/resources"
+      }
+    },
+    {
+      "type": 3,
+      "name": "project-inventory",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts/projects' | extend AccountResourceId=tostring(split(tolower(id), '/projects/')[0]) | where AccountResourceId in~ ({FoundryResources}) | project Project=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, AccountResourceId, ProjectResourceId=id",
+        "queryType": 1,
+        "size": 0,
+        "visualization": "grid",
+        "noDataMessage": "No accessible Foundry projects for the selected accounts.",
+        "crossComponentResources": [
+          "{Subscriptions}"
+        ],
+        "resourceType": "microsoft.resourcegraph/resources"
+      }
+    },
+    {
+      "type": 1,
+      "name": "detail-scope",
+      "content": {
+        "json": "### Detail account: {FoundryResource:name}\n`{FoundryResource}`\n\nARM summary tables below use this account only; native metric visuals compare all **Compare accounts** selections."
+      }
+    },
+    {
+      "type": 1,
       "name": "trend-label",
-      "content": { "json": "### Token usage over time\nTotal tokens per deployment, summed within each chart interval. Embeddings and provider-specific models may report different token signals." }
+      "content": {
+        "json": "### Token usage over time\nTotal tokens per deployment, summed within each chart interval. Embeddings and provider-specific models may report different token signals."
+      }
     },
     {
       "type": 10,
@@ -67,7 +164,9 @@
         "version": "MetricsItem/2.0",
         "size": 0,
         "chartType": 2,
-        "resourceIds": [ "{FoundryResource}" ],
+        "resourceIds": [
+          "{FoundryResources}"
+        ],
         "timeContextFromParameter": "TimeRange",
         "resourceType": "microsoft.cognitiveservices/accounts",
         "metrics": [
@@ -75,7 +174,8 @@
             "namespace": "microsoft.cognitiveservices/accounts",
             "metric": "microsoft.cognitiveservices/accounts--TotalTokens",
             "aggregation": 1,
-            "splitBy": "ModelDeploymentName"
+            "splitBy": "ModelDeploymentName",
+            "splitByLimit": 1000
           }
         ]
       }
@@ -83,7 +183,9 @@
     {
       "type": 1,
       "name": "mix-label",
-      "content": { "json": "### Tokens by deployment\nInput and output token totals for the selected range. A blank output value means that deployment did not report output tokens; embedding deployments commonly report input only. For charges, use Azure Cost Analysis." }
+      "content": {
+        "json": "### Tokens by deployment\nInput and output token totals for the selected range. A blank output value means that deployment did not report output tokens; embedding deployments commonly report input only. For charges, use Azure Cost Analysis."
+      }
     },
     {
       "type": 3,
@@ -139,7 +241,9 @@
     {
       "type": 1,
       "name": "requests-label",
-      "content": { "json": "### Requests by deployment\nAll responses, including failures. Use Inference Health for status-code breakdowns." }
+      "content": {
+        "json": "### Requests by deployment\nAll responses, including failures. Use Inference Health for status-code breakdowns."
+      }
     },
     {
       "type": 10,
@@ -149,7 +253,9 @@
         "version": "MetricsItem/2.0",
         "size": 0,
         "chartType": 0,
-        "resourceIds": [ "{FoundryResource}" ],
+        "resourceIds": [
+          "{FoundryResources}"
+        ],
         "timeContextFromParameter": "TimeRange",
         "resourceType": "microsoft.cognitiveservices/accounts",
         "metrics": [
@@ -157,7 +263,8 @@
             "namespace": "microsoft.cognitiveservices/accounts",
             "metric": "microsoft.cognitiveservices/accounts--ModelRequests",
             "aggregation": 1,
-            "splitBy": "ModelDeploymentName"
+            "splitBy": "ModelDeploymentName",
+            "splitByLimit": 1000
           }
         ]
       }

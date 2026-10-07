@@ -6,6 +6,7 @@
 - Azure Developer CLI (`azd auth login`) only if using the optional `azd provision` path.
 - An existing workbook resource group and permission to create/update `Microsoft.Insights/workbooks`.
 - Reader access to workbooks and **Monitoring Reader** or equivalent metrics-read permission on each monitored account.
+- Account/project resource-read permission for Resource Graph inventory and `Microsoft.CognitiveServices/accounts/deployments/read` for ARM deployment configuration. Inaccessible resources are omitted by RBAC; workbook Reader does not grant account/project access.
 - Permission to create role assignments only if using `sharedViewerPrincipalObjectIds`. Workbook Reader assignments do not grant metrics access on the account.
 
 ## Signal source
@@ -20,6 +21,7 @@ No Application Insights, Log Analytics workspace, diagnostic settings, or applic
 | `InputTokens`, `OutputTokens`, `TotalTokens` | Input/output support depends on model type; embeddings commonly report input only |
 | `TimeToResponse` | Gateway time to first response; documented for PTU/PTU-managed workloads |
 | `AzureOpenAITimeToResponse` | Azure OpenAI time to first response; documented for PTU and pay-as-you-go workloads |
+| `ProvisionedUtilization` | PTU percentage utilization, where reported; absence on non-PTU deployments is not zero |
 
 The focused workbook offers a latency metric picker. It does not infer missing latency, substitute unrelated service latency, or calculate percentiles from averages.
 
@@ -33,3 +35,5 @@ The focused workbook offers a latency metric picker. It does not infer missing l
 For `azd`, configure `AZURE_LOCATION`, `AZURE_RESOURCE_GROUP`, and `MODEL_ACCOUNT_RESOURCE_ID`; see [.azure/.env.example](../.azure/.env.example).
 
 The workbook account picker queries Azure Resource Graph over the portal's selected subscriptions. If an account is missing, check the subscription selection and resource-read access. The account can be in a different resource group from the workbooks.
+
+Each workbook has a subscription picker and multi-account comparison picker. The supplied account initializes its subscription and default account selection. Native metric comparisons keep each resource's deployment series separate; ARM summaries and capacity drilldown are explicitly scoped to one selected detail account. Projects are inventoried by resource type and mapped through their resource ID to the parent account, regardless of project kind. Model usage is not split by project.

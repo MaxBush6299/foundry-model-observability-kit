@@ -13,21 +13,25 @@ az deployment group create `
 
 Alternatively, use `infra\model-workbooks.bicep` with the same parameters. For Azure Developer CLI, follow the `azd provision` instructions in the [README](../README.md).
 
-Both entrypoints deploy **three workbooks only**, plus optional workbook-scoped Reader assignments. They do not provision monitoring backends, accounts, models, or diagnostic settings.
+Both entrypoints deploy **four workbooks only**, plus optional workbook-scoped Reader assignments. They do not provision monitoring backends, accounts, models, or diagnostic settings.
 
 Confirm these outputs:
 
 - `modelFleetWorkbookResourceId`
 - `modelHealthWorkbookResourceId`
 - `modelSignalsWorkbookResourceId`
+- `modelCapacityWorkbookResourceId`
 
 ## Shared viewer access
 
-Pass `sharedViewerPrincipalObjectIds` as an array and set `sharedViewerPrincipalType` if needed. The identity deploying this option must be allowed to create role assignments. The template grants Reader on all three workbook resources; metrics-read access on the account must be granted separately.
+Pass `sharedViewerPrincipalObjectIds` as an array and set `sharedViewerPrincipalType` if needed. The identity deploying this option must be allowed to create role assignments. The template grants Reader on all four workbook resources; metrics/configuration-read access on the account must be granted separately.
 
 ## Local template checks
 
 ```powershell
+python scripts\build_workbooks.py
+python -m pip install -r requirements-dev.txt
+python -m unittest discover -s tests -v
 az bicep build --file "infra\main.bicep" --stdout > $null
 az bicep build --file "infra\model-workbooks.bicep" --stdout > $null
 ```
@@ -50,8 +54,24 @@ Open **Monitor > Workbooks > Saved workbooks**, filtered to the workbook subscri
 | Fleet & Usage | Token trend and deployment input/output totals; output can be blank for embeddings |
 | Inference Health | Status trend, status summary, per-deployment status counts, availability, time to response, and traffic |
 | Volume, Latency & Availability | Three trends and three summary tables; request totals, average/maximum latency in ms, average/minimum availability in percent |
+| Usage vs Capacity | Multi-account token/request comparison; deployment detail with current TPM/RPM reference lines, one-minute token/request charts, PTU average/maximum vs 100%, and one-minute 429 counts |
 
 Check that the resource picker defaults to the account passed at deployment. Change both the account and time range and confirm all visuals follow the selection. The focused workbook should default to 24 hours.
+
+Select two accessible accounts in **Compare accounts**, including accounts with identical deployment names if available. Confirm native chart legends/results keep resource identity and deployments separate; use the account inventory's full IDs to disambiguate names. Select **Detail account** from the comparison set and confirm ARM summaries use only that account. Changing subscription/account must refresh dependent inventory and detail/deployment selections.
+
+Check projects map to their parent account and that multiple projects do not duplicate that account's usage. Inventory is permission-filtered, not proof that inaccessible resources do not exist.
+
+For capacity drilldown, compare exact `PT1M` REST samples with each chart, including missing samples and actual zeroes. Check a ten-second request rule normalizes to `count * 6`, not raw count. Compare the displayed TPM/RPM with the raw rule table; missing rules must yield no capacity line. Verify the full deployment ID belongs to the selected detail account and that case differences in deployment names do not drop metric samples. Confirm current capacity is clearly labeled and that charts are not range totals. On non-PTU/no-traffic deployments, expect missing data rather than a synthesized 0% or zero 429 count. No inference traffic or paid PTU deployment is needed to perform these checks.
+
+The optional read-only helper queries actual deployment configuration and one-minute metrics for multiple accounts. It preserves account/deployment identity and reports measured zeroes separately from missing samples/series:
+
+```powershell
+.\scripts\Test-LiveMetrics.ps1 -Subscription "<subscription-id>" `
+  -AccountResourceIds "<account-resource-id-1>", "<account-resource-id-2>"
+```
+
+Always use explicit `--subscription` in Azure CLI tests. Resource Graph CLI tests need both `--subscription` (authentication context) and `--subscriptions` (query scope), especially when accessible subscriptions span tenants. Do not change the shared global account context.
 
 In the focused workbook, test both **Latency metric** choices on accounts/deployments that support them. Foundry Models uses `TimeToResponse`; Azure OpenAI uses `AzureOpenAITimeToResponse`. Confirm both the trend and summary switch together. Unsupported/no-sample latency must remain empty, not report zero.
 

@@ -1,0 +1,461 @@
+{
+  "version": "Notebook/1.0",
+  "isLocked": false,
+  "fallbackResourceIds": [
+    "__MODEL_ACCOUNT_RESOURCE_ID__"
+  ],
+  "items": [
+    {
+      "type": 1,
+      "name": "intro",
+      "content": {
+        "json": "## Foundry Model Usage vs Capacity\nCompare account/deployment traffic, then drill into one deployment's **current allocated limits**, not subscription-wide assigned quota. No logs, quota-unit conversions, monitoring backend, or inference calls.\n\nAll capacity drilldown charts use **one-minute buckets**. Missing samples remain missing; reported zero samples remain zero. Capacity is read now from ARM and is not a historical limit series."
+      }
+    },
+    {
+      "type": 9,
+      "name": "parameters",
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "Subscriptions",
+            "version": "KqlParameterItem/1.0",
+            "name": "Subscriptions",
+            "type": 6,
+            "label": "Subscriptions",
+            "isRequired": true,
+            "multiSelect": true,
+            "quote": "'",
+            "delimiter": ",",
+            "value": [
+              "__MODEL_ACCOUNT_SUBSCRIPTION_ID__"
+            ]
+          },
+          {
+            "id": "FoundryResources",
+            "version": "KqlParameterItem/1.0",
+            "name": "FoundryResources",
+            "type": 5,
+            "label": "Compare accounts",
+            "isRequired": true,
+            "multiSelect": true,
+            "quote": "'",
+            "delimiter": ",",
+            "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__', group=subscriptionId",
+            "crossComponentResources": [
+              "{Subscriptions}"
+            ],
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "typeSettings": {
+              "additionalResourceOptions": []
+            }
+          },
+          {
+            "id": "FoundryResource",
+            "version": "KqlParameterItem/1.0",
+            "name": "FoundryResource",
+            "type": 5,
+            "label": "Detail account",
+            "isRequired": true,
+            "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__'",
+            "crossComponentResources": [
+              "{Subscriptions}"
+            ],
+            "queryType": 1,
+            "resourceType": "microsoft.resourcegraph/resources",
+            "typeSettings": {
+              "additionalResourceOptions": []
+            }
+          },
+          {
+            "id": "TimeRange",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 3600000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 21600000
+                },
+                {
+                  "durationMs": 86400000
+                }
+              ]
+            }
+          },
+          {
+            "id": "Deployment",
+            "version": "KqlParameterItem/1.0",
+            "name": "Deployment",
+            "type": 2,
+            "label": "Detail deployment",
+            "isRequired": true,
+            "queryType": 12,
+            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/deployments\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[*]\",\"columns\":[{\"path\":\"$.id\",\"columnid\":\"value\",\"columnType\":\"string\"},{\"path\":\"$.name\",\"columnid\":\"label\",\"columnType\":\"string\"}]}}]}",
+            "typeSettings": {
+              "showDefault": false
+            }
+          },
+          {
+            "id": "TokenCount",
+            "version": "KqlParameterItem/1.0",
+            "name": "TokenCount",
+            "type": 1,
+            "isHiddenWhenLocked": true,
+            "queryType": 12,
+            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='token')]\",\"columns\":[{\"path\":\"$.count\",\"columnid\":\"value\",\"columnType\":\"real\"}]}}]}"
+          },
+          {
+            "id": "TokenWindow",
+            "version": "KqlParameterItem/1.0",
+            "name": "TokenWindow",
+            "type": 1,
+            "isHiddenWhenLocked": true,
+            "queryType": 12,
+            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='token')]\",\"columns\":[{\"path\":\"$.renewalPeriod\",\"columnid\":\"value\",\"columnType\":\"real\"}]}}]}"
+          },
+          {
+            "id": "RequestCount",
+            "version": "KqlParameterItem/1.0",
+            "name": "RequestCount",
+            "type": 1,
+            "isHiddenWhenLocked": true,
+            "queryType": 12,
+            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='request')]\",\"columns\":[{\"path\":\"$.count\",\"columnid\":\"value\",\"columnType\":\"real\"}]}}]}"
+          },
+          {
+            "id": "RequestWindow",
+            "version": "KqlParameterItem/1.0",
+            "name": "RequestWindow",
+            "type": 1,
+            "isHiddenWhenLocked": true,
+            "queryType": 12,
+            "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[?(@.key=='request')]\",\"columns\":[{\"path\":\"$.renewalPeriod\",\"columnid\":\"value\",\"columnType\":\"real\"}]}}]}"
+          },
+          {
+            "id": "TPM",
+            "version": "KqlParameterItem/1.0",
+            "name": "TPM",
+            "type": 1,
+            "isHiddenWhenLocked": true,
+            "criteriaData": [
+              {
+                "criteriaContext": {
+                  "leftOperand": "TokenCount",
+                  "operator": "is Empty",
+                  "resultValType": "static",
+                  "resultVal": ""
+                }
+              },
+              {
+                "criteriaContext": {
+                  "leftOperand": "TokenWindow",
+                  "operator": ">",
+                  "rightValType": "static",
+                  "rightVal": "0",
+                  "resultValType": "expression",
+                  "resultVal": "60 * {TokenCount} / {TokenWindow}"
+                }
+              },
+              {
+                "criteriaContext": {
+                  "operator": "Default",
+                  "resultValType": "static",
+                  "resultVal": ""
+                }
+              }
+            ]
+          },
+          {
+            "id": "RPM",
+            "version": "KqlParameterItem/1.0",
+            "name": "RPM",
+            "type": 1,
+            "isHiddenWhenLocked": true,
+            "criteriaData": [
+              {
+                "criteriaContext": {
+                  "leftOperand": "RequestCount",
+                  "operator": "is Empty",
+                  "resultValType": "static",
+                  "resultVal": ""
+                }
+              },
+              {
+                "criteriaContext": {
+                  "leftOperand": "RequestWindow",
+                  "operator": ">",
+                  "rightValType": "static",
+                  "rightVal": "0",
+                  "resultValType": "expression",
+                  "resultVal": "60 * {RequestCount} / {RequestWindow}"
+                }
+              },
+              {
+                "criteriaContext": {
+                  "operator": "Default",
+                  "resultValType": "static",
+                  "resultVal": ""
+                }
+              }
+            ]
+          }
+        ],
+        "style": "pills"
+      }
+    },
+    {
+      "type": 1,
+      "name": "scope-notes",
+      "content": {
+        "json": "### Subscription comparison and account drilldown\n**Compare accounts** supports multiple accounts in the selected subscriptions. Native metrics retain separate resource/deployment series; matching deployment names in different accounts are not joined. **Detail account** selects one of those accounts for ARM summary tables and capacity drilldown.\n\nOnly RBAC-accessible resources are discoverable. Project inventory is metadata: metrics belong to the parent account/deployment and are **not project-attributed**."
+      }
+    },
+    {
+      "type": 3,
+      "name": "account-inventory",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project Account=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, Region=location, Kind=kind, AccountResourceId=id",
+        "queryType": 1,
+        "size": 0,
+        "visualization": "grid",
+        "crossComponentResources": [
+          "{Subscriptions}"
+        ],
+        "resourceType": "microsoft.resourcegraph/resources"
+      }
+    },
+    {
+      "type": 3,
+      "name": "project-inventory",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts/projects' | extend AccountResourceId=tostring(split(tolower(id), '/projects/')[0]) | where AccountResourceId in~ ({FoundryResources}) | project Project=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, AccountResourceId, ProjectResourceId=id",
+        "queryType": 1,
+        "size": 0,
+        "visualization": "grid",
+        "noDataMessage": "No accessible Foundry projects for the selected accounts.",
+        "crossComponentResources": [
+          "{Subscriptions}"
+        ],
+        "resourceType": "microsoft.resourcegraph/resources"
+      }
+    },
+    {
+      "type": 1,
+      "name": "detail-scope",
+      "content": {
+        "json": "### Detail account: {FoundryResource:name}\n`{FoundryResource}`\n\nARM summary tables below use this account only; native metric visuals compare all **Compare accounts** selections."
+      }
+    },
+    {
+      "type": 10,
+      "name": "compare-tokens",
+      "content": {
+        "chartId": "model-capacity-compare-tokens",
+        "version": "MetricsItem/2.0",
+        "size": 0,
+        "title": "Account/deployment comparison (interval totals, not utilization)",
+        "chartType": 2,
+        "resourceIds": [
+          "{FoundryResources}"
+        ],
+        "timeContextFromParameter": "TimeRange",
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--TotalTokens",
+            "aggregation": 1,
+            "splitBy": "ModelDeploymentName",
+            "splitByLimit": 1000
+          }
+        ]
+      }
+    },
+    {
+      "type": 10,
+      "name": "compare-requests",
+      "content": {
+        "chartId": "model-capacity-compare-requests",
+        "version": "MetricsItem/2.0",
+        "size": 0,
+        "title": "Account/deployment comparison (interval totals, not utilization)",
+        "chartType": 2,
+        "resourceIds": [
+          "{FoundryResources}"
+        ],
+        "timeContextFromParameter": "TimeRange",
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelRequests",
+            "aggregation": 1,
+            "splitBy": "ModelDeploymentName",
+            "splitByLimit": 1000
+          }
+        ]
+      }
+    },
+    {
+      "type": 1,
+      "name": "deployment-scope",
+      "content": {
+        "json": "### Capacity drilldown: {Deployment:label}\n`{Deployment}`\n\nCurrent allocated TPM: **{TPM}**; current RPM equivalent: **{RPM}**. Blank limits mean unavailable, not zero or unlimited. The charts' horizontal reference lines use those current values."
+      }
+    },
+    {
+      "type": 3,
+      "name": "deployment-configuration",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$\",\"columns\":[{\"path\":\"$.id\",\"columnid\":\"Deployment resource ID\",\"columnType\":\"string\"},{\"path\":\"$.sku.name\",\"columnid\":\"Deployment type\",\"columnType\":\"string\"},{\"path\":\"$.sku.capacity\",\"columnid\":\"SKU capacity units (not TPM)\",\"columnType\":\"real\"},{\"path\":\"$.properties.dynamicThrottlingEnabled\",\"columnid\":\"Dynamic throttling\",\"columnType\":\"boolean\"}]}}]}",
+        "queryType": 12,
+        "size": 0,
+        "visualization": "grid"
+      }
+    },
+    {
+      "type": 3,
+      "name": "rate-limits",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{Deployment}\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2024-10-01\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.properties.rateLimits[*]\",\"columns\":[{\"path\":\"$.key\",\"columnid\":\"Limit kind\",\"columnType\":\"string\"},{\"path\":\"$.count\",\"columnid\":\"Count\",\"columnType\":\"real\"},{\"path\":\"$.renewalPeriod\",\"columnid\":\"Renewal period (seconds)\",\"columnType\":\"real\"}]}}]}",
+        "queryType": 12,
+        "size": 0,
+        "visualization": "grid",
+        "noDataMessage": "ARM did not report rate limits. No capacity is inferred from SKU units."
+      }
+    },
+    {
+      "type": 1,
+      "name": "tokens-label",
+      "content": {
+        "json": "### Processed tokens/minute vs current allocated TPM (approximate)\n`TotalTokens`, Sum, PT1M. Azure admission throttling uses **arrival-time estimated tokens** (including requested output), not these processed-token totals. Below-limit processed traffic can still receive 429s. Do not interpret this as exact throttling headroom or billed cost."
+      }
+    },
+    {
+      "type": 3,
+      "name": "tokens-vs-tpm",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"TotalTokens\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:name}'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.total\",\"columnid\":\"Processed tokens/minute\",\"columnType\":\"real\"}]}}]}",
+        "queryType": 12,
+        "size": 0,
+        "visualization": "timechart",
+        "chartSettings": {
+          "xAxis": "Time",
+          "yAxis": [
+            "Processed tokens/minute"
+          ],
+          "showLegend": true,
+          "showMetrics": false,
+          "customThresholdLine": "{TPM}",
+          "customThresholdLineStyle": 1
+        },
+        "timeContextFromParameter": "TimeRange",
+        "noDataMessage": "No reported samples for this deployment/metric. Missing is not zero."
+      }
+    },
+    {
+      "type": 1,
+      "name": "requests-label",
+      "content": {
+        "json": "### Requests/minute vs current RPM equivalent\n`ModelRequests`, Sum, PT1M, including failures. RPM = 60 x reported request count / renewal period in seconds. For example, 10 requests per 10 seconds means 60 RPM equivalent, **not** permission to burst 60 requests at once. Sub-minute enforcement and dynamic throttling can cause 429s below this line."
+      }
+    },
+    {
+      "type": 3,
+      "name": "requests-vs-rpm",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"ModelRequests\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:name}'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.total\",\"columnid\":\"Requests/minute\",\"columnType\":\"real\"}]}}]}",
+        "queryType": 12,
+        "size": 0,
+        "visualization": "timechart",
+        "chartSettings": {
+          "xAxis": "Time",
+          "yAxis": [
+            "Requests/minute"
+          ],
+          "showLegend": true,
+          "showMetrics": false,
+          "customThresholdLine": "{RPM}",
+          "customThresholdLineStyle": 1
+        },
+        "timeContextFromParameter": "TimeRange",
+        "noDataMessage": "No reported samples for this deployment/metric. Missing is not zero."
+      }
+    },
+    {
+      "type": 1,
+      "name": "ptu-label",
+      "content": {
+        "json": "### PTU utilization vs 100% capacity\n`ProvisionedUtilization`, Average/Maximum, PT1M. The **100%** reference is the PTU capacity threshold, not 100 TPM or SKU units. Non-PTU or unsupported deployments may have no samples; an empty chart does not mean 0% utilization. One-minute averages can hide bursts; maximum reported samples help identify peaks."
+      }
+    },
+    {
+      "type": 3,
+      "name": "ptu-utilization",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"ProvisionedUtilization\"},{\"key\":\"aggregation\",\"value\":\"Average,Maximum\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:name}'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.average\",\"columnid\":\"Average utilization (%)\",\"columnType\":\"real\"},{\"path\":\"$.maximum\",\"columnid\":\"Maximum utilization (%)\",\"columnType\":\"real\"}]}}]}",
+        "queryType": 12,
+        "size": 0,
+        "visualization": "timechart",
+        "chartSettings": {
+          "xAxis": "Time",
+          "yAxis": [
+            "Average utilization (%)",
+            "Maximum utilization (%)"
+          ],
+          "showLegend": true,
+          "showMetrics": false,
+          "customThresholdLine": "100",
+          "customThresholdLineStyle": 1
+        },
+        "timeContextFromParameter": "TimeRange",
+        "noDataMessage": "No reported samples for this deployment/metric. Missing is not zero."
+      }
+    },
+    {
+      "type": 1,
+      "name": "throttling-label",
+      "content": {
+        "json": "### 429 throttling counts/minute\nReported HTTP 429 responses for this account/deployment, not a count of quota units. Missing series are not a measured zero. Use Inference Health for other HTTP status codes."
+      }
+    },
+    {
+      "type": 3,
+      "name": "throttling-429",
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "{\"version\":\"ARMEndpoint/1.0\",\"data\":null,\"headers\":[],\"method\":\"GET\",\"path\":\"{FoundryResource}/providers/microsoft.insights/metrics\",\"urlParams\":[{\"key\":\"api-version\",\"value\":\"2018-01-01\"},{\"key\":\"metricnames\",\"value\":\"ModelRequests\"},{\"key\":\"aggregation\",\"value\":\"Total\"},{\"key\":\"interval\",\"value\":\"PT1M\"},{\"key\":\"autoAdjustTimegrain\",\"value\":\"false\"},{\"key\":\"timespan\",\"value\":\"{TimeRange:startISO}/{TimeRange:endISO}\"},{\"key\":\"$filter\",\"value\":\"ModelDeploymentName eq '{Deployment:name}' and StatusCode eq '429'\"}],\"batchDisabled\":false,\"transformers\":[{\"type\":\"jsonpath\",\"settings\":{\"tablePath\":\"$.value[0].timeseries[0].data[*]\",\"columns\":[{\"path\":\"$.timeStamp\",\"columnid\":\"Time\",\"columnType\":\"datetime\"},{\"path\":\"$.total\",\"columnid\":\"HTTP 429 responses/minute\",\"columnType\":\"real\"}]}}]}",
+        "queryType": 12,
+        "size": 0,
+        "visualization": "timechart",
+        "chartSettings": {
+          "xAxis": "Time",
+          "yAxis": [
+            "HTTP 429 responses/minute"
+          ],
+          "showLegend": true,
+          "showMetrics": false
+        },
+        "timeContextFromParameter": "TimeRange",
+        "noDataMessage": "No reported samples for this deployment/metric. Missing is not zero."
+      }
+    }
+  ]
+}

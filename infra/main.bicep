@@ -31,3 +31,4 @@ module modelWorkbooks './model-workbooks.bicep' = {
 output modelFleetWorkbookResourceId string = modelWorkbooks.outputs.modelFleetWorkbookResourceId
 output modelHealthWorkbookResourceId string = modelWorkbooks.outputs.modelHealthWorkbookResourceId
 output modelSignalsWorkbookResourceId string = modelWorkbooks.outputs.modelSignalsWorkbookResourceId
+output modelCapacityWorkbookResourceId string = modelWorkbooks.outputs.modelCapacityWorkbookResourceId
