@@ -32,7 +32,7 @@
             "quote": "'",
             "delimiter": ",",
             "value": [
-              "__MODEL_ACCOUNT_SUBSCRIPTION_ID__"
+              "/subscriptions/__MODEL_ACCOUNT_SUBSCRIPTION_ID__"
             ]
           },
           {
@@ -45,7 +45,7 @@
             "multiSelect": true,
             "quote": "'",
             "delimiter": ",",
-            "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__', group=subscriptionId",
+            "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__', group=subscriptionId",
             "crossComponentResources": [
               "{Subscriptions}"
             ],
@@ -62,7 +62,7 @@
             "type": 5,
             "label": "Detail account",
             "isRequired": true,
-            "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__'",
+            "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project value=id, label=strcat(name, ' (', resourceGroup, ')'), selected=id =~ '__MODEL_ACCOUNT_RESOURCE_ID__'",
             "crossComponentResources": [
               "{Subscriptions}"
             ],
@@ -116,7 +116,7 @@
       "name": "account-inventory",
       "content": {
         "version": "KqlItem/1.0",
-        "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project Account=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, Region=location, Kind=kind, AccountResourceId=id",
+        "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts' and kind in~ ('AIServices', 'OpenAI') | where id in~ ({FoundryResources}) | project Account=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, Region=location, Kind=kind, AccountResourceId=id",
         "queryType": 1,
         "size": 0,
         "visualization": "grid",
@@ -131,7 +131,7 @@
       "name": "project-inventory",
       "content": {
         "version": "KqlItem/1.0",
-        "query": "resources | where subscriptionId in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts/projects' | extend AccountResourceId=tostring(split(tolower(id), '/projects/')[0]) | where AccountResourceId in~ ({FoundryResources}) | project Project=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, AccountResourceId, ProjectResourceId=id",
+        "query": "resources | where subscriptionId in~ ({Subscriptions}) or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) | where type =~ 'microsoft.cognitiveservices/accounts/projects' | extend AccountResourceId=tostring(split(tolower(id), '/projects/')[0]) | where AccountResourceId in~ ({FoundryResources}) | project Project=name, ResourceGroup=resourceGroup, Subscription=subscriptionId, AccountResourceId, ProjectResourceId=id",
         "queryType": 1,
         "size": 0,
         "visualization": "grid",

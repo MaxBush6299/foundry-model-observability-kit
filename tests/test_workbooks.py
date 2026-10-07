@@ -87,9 +87,8 @@ class WorkbookTests(unittest.TestCase):
                 if item["type"] == 10:
                     self.assertEqual(["{FoundryResources}"], item["content"]["resourceIds"])
                 if item["type"] == 3 and item["content"]["queryType"] == 12:
-                    self.assertIn("{FoundryResource}", json.loads(item["content"]["query"])["path"]
-                                  if "{Deployment}" not in json.loads(item["content"]["query"])["path"]
-                                  else "{FoundryResource}")
+                    path = json.loads(item["content"]["query"])["path"]
+                    self.assertTrue(path.startswith("{FoundryResource}") or path == "{Deployment}")
             projects = next(item for item in book["items"] if item["name"] == "project-inventory")
             self.assertIn("accounts/projects", projects["content"]["query"])
             self.assertNotIn("kind", projects["content"]["query"])
@@ -106,6 +105,23 @@ class WorkbookTests(unittest.TestCase):
         self.assertEqual(60, evaluate_criteria(self.params["RPM"], values))
         values.update(RequestCount=125, RequestWindow=60)
         self.assertEqual(125, evaluate_criteria(self.params["RPM"], values))
+
+    def test_portal_subscription_picker_resource_id_not_just_guid(self):
+        self.assertEqual(["/subscriptions/__MODEL_ACCOUNT_SUBSCRIPTION_ID__"],
+                         self.params["Subscriptions"]["value"])
+        for book in self.books.values():
+            params = next(item["content"]["parameters"] for item in book["items"]
+                          if item["type"] == 9)
+            graph_queries = [p["query"] for p in params if p.get("queryType") == 1]
+            graph_queries += [i["content"]["query"] for i in book["items"]
+                              if i["type"] == 3 and i["content"]["queryType"] == 1]
+            for source in graph_queries:
+                for selection in ("'/subscriptions/test-guid'", "'test-guid'"):
+                    rendered = source.replace("{Subscriptions}", selection)
+                    self.assertIn(f"subscriptionId in~ ({selection})", rendered)
+                    self.assertIn(
+                        f"strcat('/subscriptions/', subscriptionId) in~ ({selection})",
+                        rendered)
 
     def test_missing_limits_and_invalid_periods_are_not_zero_capacity(self):
         self.assertEqual([], extract(self.params["RequestCount"]["query"], {"properties": {}}))

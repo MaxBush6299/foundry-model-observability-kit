@@ -5,8 +5,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = "KqlParameterItem/1.0"
-ACCOUNT_QUERY = (
+SUBSCRIPTION_FILTER = (
     "resources | where subscriptionId in~ ({Subscriptions}) "
+    "or strcat('/subscriptions/', subscriptionId) in~ ({Subscriptions}) "
+)
+ACCOUNT_QUERY = (
+    SUBSCRIPTION_FILTER +
     "| where type =~ 'microsoft.cognitiveservices/accounts' "
     "and kind in~ ('AIServices', 'OpenAI') "
 )
@@ -47,7 +51,7 @@ def scope_parameters():
     return [
         parameter("Subscriptions", 6, label="Subscriptions", isRequired=True,
                   multiSelect=True, quote="'", delimiter=",",
-                  value=["__MODEL_ACCOUNT_SUBSCRIPTION_ID__"]),
+                  value=["/subscriptions/__MODEL_ACCOUNT_SUBSCRIPTION_ID__"]),
         parameter("FoundryResources", 5, label="Compare accounts", isRequired=True,
                   multiSelect=True, quote="'", delimiter=",",
                   query=ACCOUNT_QUERY + (
@@ -84,7 +88,7 @@ def inventory():
               crossComponentResources=["{Subscriptions}"],
               resourceType="microsoft.resourcegraph/resources"),
         query("project-inventory",
-              "resources | where subscriptionId in~ ({Subscriptions}) "
+              SUBSCRIPTION_FILTER +
               "| where type =~ 'microsoft.cognitiveservices/accounts/projects' "
               "| extend AccountResourceId=tostring(split(tolower(id), '/projects/')[0]) "
               "| where AccountResourceId in~ ({FoundryResources}) "
