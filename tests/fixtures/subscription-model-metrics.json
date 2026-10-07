@@ -1,0 +1,73 @@
+[
+  {
+    "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
+    "account": "account-a",
+    "deployment": "deployment-one",
+    "model": "shared-model",
+    "input": 10, "output": 5, "total": 15, "requests": 2,
+    "inputTrend": [10, null, 0], "outputTrend": [null, 5, 0],
+    "totalTrend": [10, 5, 0], "requestTrend": [2, null, 0]
+  },
+  {
+    "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
+    "account": "account-b",
+    "deployment": "deployment-two",
+    "model": "shared-model",
+    "input": 20, "output": null, "total": 20, "requests": 3,
+    "inputTrend": [20, null, 0], "outputTrend": null,
+    "totalTrend": [20, null, 0], "requestTrend": [3, null, 0]
+  },
+  {
+    "subscription": "/subscriptions/22222222-2222-2222-2222-222222222222",
+    "account": "account-c",
+    "deployment": "deployment-one",
+    "model": "shared-model",
+    "input": 70, "output": 40, "total": 110, "requests": 7,
+    "inputTrend": [70, 0, null], "outputTrend": [40, 0, null],
+    "totalTrend": [110, 0, null], "requestTrend": [7, 0, null]
+  },
+  {
+    "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
+    "account": "account-a",
+    "deployment": "embedding-one",
+    "model": "embedding-model",
+    "input": 9, "output": null, "total": 9, "requests": 1,
+    "inputTrend": [9, null, 0], "outputTrend": null,
+    "totalTrend": [9, null, 0], "requestTrend": [1, null, 0]
+  },
+  {
+    "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
+    "account": "account-b",
+    "deployment": "embedding-two",
+    "model": "embedding-model",
+    "input": 6, "output": null, "total": 6, "requests": 2,
+    "inputTrend": [6, null, 0], "outputTrend": null,
+    "totalTrend": [6, null, 0], "requestTrend": [2, null, 0]
+  },
+  {
+    "subscription": "/subscriptions/22222222-2222-2222-2222-222222222222",
+    "account": "account-c",
+    "deployment": "embedding-one",
+    "model": "embedding-model",
+    "input": 8, "output": null, "total": 8, "requests": 1,
+    "inputTrend": [8, null, 0], "outputTrend": null,
+    "totalTrend": [8, null, 0], "requestTrend": [1, null, 0]
+  },
+  {
+    "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
+    "account": "account-a",
+    "deployment": "measured-zero",
+    "model": "zero-model",
+    "input": 0, "output": null, "total": 0, "requests": 0,
+    "inputTrend": [0, null, 0], "outputTrend": null,
+    "totalTrend": [0, null, 0], "requestTrend": [0, null, 0]
+  },
+  {
+    "subscription": "/subscriptions/11111111-1111-1111-1111-111111111111",
+    "account": "account-b",
+    "deployment": "no-samples",
+    "model": "missing-model",
+    "input": null, "output": null, "total": null, "requests": null,
+    "inputTrend": null, "outputTrend": null, "totalTrend": null, "requestTrend": null
+  }
+]

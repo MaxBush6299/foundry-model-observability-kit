@@ -9,7 +9,7 @@
       "type": 1,
       "name": "intro",
       "content": {
-        "json": "## Foundry Model Fleet & Usage\nAzure Monitor model metrics from the selected Foundry account. Choose a Foundry resource and time range. Blank values mean no reported samples, not zero usage. Token counts are **not billed cost**."
+        "json": "## Foundry Model Fleet & Usage\nCompare **subscription and underlying model** totals across the accounts selected in **Compare accounts**. Models are identified by the reported `ModelName`, not deployment aliases; versions with the same model name are combined. Blank values mean no reported samples, not zero usage. Token counts are **not billed cost**."
       }
     },
     {
@@ -108,7 +108,7 @@
       "type": 1,
       "name": "scope-notes",
       "content": {
-        "json": "### Subscription comparison and account drilldown\n**Compare accounts** supports multiple accounts in the selected subscriptions. Native metrics retain separate resource/deployment series; matching deployment names in different accounts are not joined. **Detail account** selects one of those accounts for ARM summary tables and capacity drilldown.\n\nOnly RBAC-accessible resources are discoverable. Project inventory is metadata: metrics belong to the parent account/deployment and are **not project-attributed**."
+        "json": "### Subscription comparison and account drilldown\nSelect subscriptions, then all accounts you want included in **Compare accounts**. The totals table sums selected accounts/deployments by full subscription resource ID and underlying `ModelName`. Expand a model row to inspect its contributing accounts. Trends remain separate account/deployment series, **not subscription/model rollups**.\n\nOnly RBAC-accessible resources are discoverable; selecting a subscription does not automatically include every account. Project inventory is metadata: usage belongs to parent accounts/deployments and is **not project-attributed**."
       }
     },
     {
@@ -144,16 +144,160 @@
     },
     {
       "type": 1,
-      "name": "detail-scope",
+      "name": "model-totals-label",
       "content": {
-        "json": "### Detail account: {FoundryResource:name}\n`{FoundryResource}`\n\nARM summary tables below use this account only; native metric visuals compare all **Compare accounts** selections."
+        "json": "### Combined subscription/model totals\nInput/output/total-token and request totals for the selected range. Subscription IDs are grouping keys, so identically named models in different subscriptions stay separate. Subscriptions also show an all-model subtotal. Blank cells remain unavailable, not measured zero. Grouped trend columns are intentionally disabled to preserve missing-versus-zero semantics."
+      }
+    },
+    {
+      "type": 10,
+      "name": "subscription-model-totals",
+      "content": {
+        "chartId": "model-fleet-subscription-model-totals",
+        "version": "MetricsItem/2.0",
+        "size": 0,
+        "chartType": 0,
+        "gridFormatType": 2,
+        "resourceLimit": 10000,
+        "showExpandCollapseGrid": true,
+        "resourceIds": [
+          "{FoundryResources}"
+        ],
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "timeContextFromParameter": "TimeRange",
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--InputTokens",
+            "aggregation": 1,
+            "splitBy": [
+              "ModelName"
+            ],
+            "splitByLimit": 1000
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--OutputTokens",
+            "aggregation": 1,
+            "splitBy": [
+              "ModelName"
+            ],
+            "splitByLimit": 1000
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--TotalTokens",
+            "aggregation": 1,
+            "splitBy": [
+              "ModelName"
+            ],
+            "splitByLimit": 1000
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelRequests",
+            "aggregation": 1,
+            "splitBy": [
+              "ModelName"
+            ],
+            "splitByLimit": 1000
+          }
+        ],
+        "gridSettings": {
+          "hierarchySettings": {
+            "treeType": 1,
+            "groupBy": [
+              "Subscription",
+              "Segment"
+            ],
+            "expandTopLevel": true,
+            "finalBy": "Name"
+          },
+          "formatters": [
+            {
+              "columnMatch": "Name",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "Segment",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--InputTokens",
+              "formatter": 1,
+              "formatOptions": {
+                "aggregation": "Sum"
+              }
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--InputTokens Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--OutputTokens",
+              "formatter": 1,
+              "formatOptions": {
+                "aggregation": "Sum"
+              }
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--OutputTokens Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--TotalTokens",
+              "formatter": 1,
+              "formatOptions": {
+                "aggregation": "Sum"
+              }
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--TotalTokens Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "formatter": 1,
+              "formatOptions": {
+                "aggregation": "Sum"
+              }
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests Timeline",
+              "formatter": 5
+            }
+          ],
+          "labelSettings": [
+            {
+              "columnId": "Subscription",
+              "label": "Subscription / model / account"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--InputTokens",
+              "label": "Input tokens"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--OutputTokens",
+              "label": "Output tokens"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--TotalTokens",
+              "label": "Total tokens"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "label": "Requests"
+            }
+          ],
+          "rowLimit": 10000
+        }
       }
     },
     {
       "type": 1,
       "name": "trend-label",
       "content": {
-        "json": "### Token usage over time\nTotal tokens per deployment, summed within each chart interval. Embeddings and provider-specific models may report different token signals."
+        "json": "### Account/deployment token trends (not subscription/model rollups)\nSeparate series retain resource identity and deployment names. Values are token totals within each chart interval, not per-minute capacity. No cross-account grouped sparklines are shown: native Sum sparklines can turn missing buckets into zero."
       }
     },
     {
@@ -177,14 +321,54 @@
             "splitBy": "ModelDeploymentName",
             "splitByLimit": 1000
           }
+        ],
+        "title": "Account/deployment token trends"
+      }
+    },
+    {
+      "type": 1,
+      "name": "request-trend-label",
+      "content": {
+        "json": "### Account/deployment request trends (not subscription/model rollups)\nSeparate resource/deployment series, summed within each interval, including failures. These are not combined subscription/model trends. Missing samples are not measured zero."
+      }
+    },
+    {
+      "type": 10,
+      "name": "request-trend",
+      "content": {
+        "chartId": "model-fleet-request-trend",
+        "version": "MetricsItem/2.0",
+        "size": 0,
+        "chartType": 2,
+        "title": "Account/deployment request trends",
+        "resourceIds": [
+          "{FoundryResources}"
+        ],
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "timeContextFromParameter": "TimeRange",
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelRequests",
+            "aggregation": 1,
+            "splitBy": "ModelDeploymentName",
+            "splitByLimit": 1000
+          }
         ]
+      }
+    },
+    {
+      "type": 1,
+      "name": "detail-scope",
+      "content": {
+        "json": "### Detail account: {FoundryResource:name}\n`{FoundryResource}`\n\nARM summary tables below use this account only; native metric visuals compare all **Compare accounts** selections."
       }
     },
     {
       "type": 1,
       "name": "mix-label",
       "content": {
-        "json": "### Tokens by deployment\nInput and output token totals for the selected range. A blank output value means that deployment did not report output tokens; embedding deployments commonly report input only. For charges, use Azure Cost Analysis."
+        "json": "### Detail account: tokens by deployment\nInput and output totals for **Detail account** only. Blank output means no reported output tokens; embeddings commonly report input only. For charges, use Azure Cost Analysis."
       }
     },
     {
@@ -242,7 +426,7 @@
       "type": 1,
       "name": "requests-label",
       "content": {
-        "json": "### Requests by deployment\nAll responses, including failures. Use Inference Health for status-code breakdowns."
+        "json": "### Account/deployment request totals (not subscription/model rollups)\nSeparate selected-account/deployment totals, including failures. Use Inference Health for status-code breakdowns."
       }
     },
     {

@@ -51,7 +51,7 @@ Open **Monitor > Workbooks > Saved workbooks**, filtered to the workbook subscri
 
 | Workbook | Expected result when metrics exist |
 | --- | --- |
-| Fleet & Usage | Token trend and deployment input/output totals; output can be blank for embeddings |
+| Fleet & Usage | Combined subscription/model input/output/total-token and request totals; blank embedding output; separate account/deployment token/request trends and detail |
 | Inference Health | Status trend, status summary, per-deployment status counts, availability, time to response, and traffic |
 | Volume, Latency & Availability | Three trends and three summary tables; request totals, average/maximum latency in ms, average/minimum availability in percent |
 | Usage vs Capacity | Multi-account token/request comparison; deployment detail with current TPM/RPM reference lines, one-minute token/request charts, PTU average/maximum vs 100%, and one-minute 429 counts |
@@ -61,6 +61,10 @@ Check that the resource picker defaults to the account passed at deployment. Cha
 Select two accessible accounts in **Compare accounts**, including accounts with identical deployment names if available. Confirm native chart legends/results keep resource identity and deployments separate; use the account inventory's full IDs to disambiguate names. Select **Detail account** from the comparison set and confirm ARM summaries use only that account. Changing subscription/account must refresh dependent inventory and detail/deployment selections.
 
 Check projects map to their parent account and that multiple projects do not duplicate that account's usage. Inventory is permission-filtered, not proof that inaccessible resources do not exist.
+
+In Fleet, confirm the default totals table groups by subscription resource ID and underlying `ModelName`, not deployment alias. Select accounts with the same model and compare each group against the sum of those accounts' model-split metrics for the same range. Expand model rows to verify contributing account IDs. All-missing output must remain blank and measured zero must remain zero. Rollup timeline columns must be absent; token/request trend headings must explicitly say account/deployment scope, not subscription/model rollup. The original detail-account deployment input/output table remains available.
+
+When two subscriptions are accessible in the same directory, repeat with the same model in both and verify separate groups. Otherwise, record the one-subscription live-test limitation and use `tests\fixtures\subscription-model-metrics.json` for two-subscription/two-account collision and null regressions; do not claim live cross-subscription validation.
 
 For capacity drilldown, compare exact `PT1M` REST samples with each chart, including missing samples and actual zeroes. Check a ten-second request rule normalizes to `count * 6`, not raw count. Compare the displayed TPM/RPM with the raw rule table; missing rules must yield no capacity line. Verify the full deployment ID belongs to the selected detail account and that case differences in deployment names do not drop metric samples. Confirm current capacity is clearly labeled and that charts are not range totals. On non-PTU/no-traffic deployments, expect missing data rather than a synthesized 0% or zero 429 count. No inference traffic or paid PTU deployment is needed to perform these checks.
 

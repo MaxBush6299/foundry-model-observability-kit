@@ -37,6 +37,11 @@ def arithmetic(expression):
     return compute(node)
 
 
+def nullable_sum(values):
+    reported = [value for value in values if value is not None]
+    return sum(reported) if reported else None
+
+
 def evaluate_criteria(param, values):
     if any(not row["criteriaContext"]["resultVal"] for row in param["criteriaData"]):
         raise ValueError("Portal criteria results must be nonempty")
@@ -75,8 +80,9 @@ class WorkbookTests(unittest.TestCase):
     def test_four_books_and_idempotent_generation(self):
         self.assertEqual(4, len(self.books))
         self.assertEqual(self.capacity, builder.capacity_workbook())
-        for book in self.books.values():
-            self.assertEqual(book, builder.apply_scope(copy.deepcopy(book)))
+        for name, book in self.books.items():
+            apply = builder.fleet_workbook if name == "model-fleet.workbook" else builder.apply_scope
+            self.assertEqual(book, apply(copy.deepcopy(book)))
 
     def test_all_books_have_subscription_comparison_and_project_inventory(self):
         for book in self.books.values():
@@ -213,6 +219,70 @@ class WorkbookTests(unittest.TestCase):
             self.assertIn("ModelDeploymentName eq 'MixedCase'", rendered)
             self.assertNotIn(value, rendered)
             self.assertNotIn("{Deployment:name}", args["$filter"])
+
+    def test_fleet_combines_scalar_totals_by_subscription_and_underlying_model(self):
+        fleet = self.books["model-fleet.workbook"]
+        rollup = next((i for i in fleet["items"] if i["name"] == "subscription-model-totals"), None)
+        self.assertIsNotNone(rollup)
+        content = rollup["content"]
+        self.assertEqual(10, rollup["type"])
+        self.assertEqual(2, content["gridFormatType"])
+        self.assertEqual(["{FoundryResources}"], content["resourceIds"])
+        self.assertEqual(["Subscription", "Segment"],
+                         content["gridSettings"]["hierarchySettings"]["groupBy"])
+        self.assertEqual({"InputTokens", "OutputTokens", "TotalTokens", "ModelRequests"},
+                         {m["metric"].split("--")[-1] for m in content["metrics"]})
+        for metric in content["metrics"]:
+            self.assertEqual(["ModelName"], metric["splitBy"])
+            self.assertEqual(1, metric["aggregation"])
+        for formatter in content["gridSettings"]["formatters"]:
+            if formatter["columnMatch"].endswith(" Timeline"):
+                self.assertEqual(5, formatter["formatter"])
+                self.assertNotIn("aggregation", formatter.get("formatOptions", {}))
+            elif "--" in formatter["columnMatch"]:
+                self.assertEqual("Sum", formatter["formatOptions"]["aggregation"])
+                self.assertNotIn("emptyValCustomText", formatter.get("numberFormat", {}))
+
+    def test_fleet_fixture_preserves_subscription_collisions_missing_output_and_zero(self):
+        rows = json.loads((builder.ROOT / "tests" / "fixtures" /
+                           "subscription-model-metrics.json").read_text())
+        groups = {}
+        for row in rows:
+            key = (row["subscription"], row["model"])
+            self.assertTrue(key[0].startswith("/subscriptions/"))
+            groups.setdefault(key, []).append(row)
+        totals = {
+            key: {field: nullable_sum(row[field] for row in group)
+                  for field in ("input", "output", "total", "requests")}
+            for key, group in groups.items()
+        }
+        a = "/subscriptions/11111111-1111-1111-1111-111111111111"
+        b = "/subscriptions/22222222-2222-2222-2222-222222222222"
+        self.assertEqual({"input": 30, "output": 5, "total": 35, "requests": 5},
+                         totals[a, "shared-model"])
+        self.assertEqual({"input": 70, "output": 40, "total": 110, "requests": 7},
+                         totals[b, "shared-model"])
+        self.assertEqual(15, totals[a, "embedding-model"]["input"])
+        self.assertIsNone(totals[a, "embedding-model"]["output"])
+        self.assertEqual(0, totals[a, "zero-model"]["total"])
+        self.assertIsNone(totals[a, "missing-model"]["total"])
+        self.assertNotEqual(groups[a, "shared-model"][0]["deployment"],
+                            groups[a, "shared-model"][1]["deployment"])
+        self.assertEqual([10, None, 0], groups[a, "shared-model"][0]["inputTrend"])
+
+    def test_fleet_trends_stay_account_deployment_scoped(self):
+        fleet = self.books["model-fleet.workbook"]
+        by_name = {i["name"]: i for i in fleet["items"]}
+        for name in ("token-trend", "request-trend"):
+            self.assertEqual(2, by_name[name]["content"]["chartType"])
+            self.assertEqual(["{FoundryResources}"], by_name[name]["content"]["resourceIds"])
+            self.assertEqual("ModelDeploymentName",
+                             by_name[name]["content"]["metrics"][0]["splitBy"])
+            self.assertIn("Account/deployment", by_name[name]["content"]["title"])
+        names = list(by_name)
+        self.assertLess(names.index("subscription-model-totals"), names.index("token-trend"))
+        self.assertTrue({"token-input-source", "token-output-source", "token-mix", "requests"}
+                        <= set(by_name))
 
 
 if __name__ == "__main__":

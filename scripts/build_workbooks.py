@@ -1,4 +1,4 @@
-"""Apply shared subscription scope and build the usage/capacity workbook."""
+"""Apply shared scope, Fleet rollups, and the usage/capacity workbook."""
 
 import json
 from pathlib import Path
@@ -120,6 +120,106 @@ def apply_scope(workbook):
             item["content"]["resourceIds"] = ["{FoundryResources}"]
             for metric in item["content"]["metrics"]:
                 metric["splitByLimit"] = 1000
+    return workbook
+
+
+def fleet_workbook(workbook):
+    workbook = apply_scope(workbook)
+    generated_names = {"model-totals-label", "subscription-model-totals",
+                       "request-trend-label", "request-trend"}
+    workbook["items"] = [item for item in workbook["items"]
+                         if item["name"] not in generated_names]
+    by_name = {item["name"]: item for item in workbook["items"]}
+    by_name["intro"]["content"]["json"] = (
+        "## Foundry Model Fleet & Usage\n"
+        "Compare **subscription and underlying model** totals across the accounts selected "
+        "in **Compare accounts**. Models are identified by the reported `ModelName`, "
+        "not deployment aliases; versions with the same model name are combined. "
+        "Blank values mean no reported samples, not zero usage. Token counts are **not billed cost**."
+    )
+    by_name["scope-notes"]["content"]["json"] = (
+        "### Subscription comparison and account drilldown\n"
+        "Select subscriptions, then all accounts you want included in **Compare accounts**. "
+        "The totals table sums selected accounts/deployments by full subscription resource ID "
+        "and underlying `ModelName`. Expand a model row to inspect its contributing accounts. "
+        "Trends remain separate account/deployment series, **not subscription/model rollups**.\n\n"
+        "Only RBAC-accessible resources are discoverable; selecting a subscription does not "
+        "automatically include every account. Project inventory is metadata: usage belongs "
+        "to parent accounts/deployments and is **not project-attributed**."
+    )
+    by_name["trend-label"]["content"]["json"] = (
+        "### Account/deployment token trends (not subscription/model rollups)\n"
+        "Separate series retain resource identity and deployment names. Values are token "
+        "totals within each chart interval, not per-minute capacity. No cross-account "
+        "grouped sparklines are shown: native Sum sparklines can turn missing buckets into zero."
+    )
+    by_name["token-trend"]["content"]["title"] = "Account/deployment token trends"
+    by_name["mix-label"]["content"]["json"] = (
+        "### Detail account: tokens by deployment\n"
+        "Input and output totals for **Detail account** only. Blank output means no reported "
+        "output tokens; embeddings commonly report input only. For charges, use Azure Cost Analysis."
+    )
+    by_name["requests-label"]["content"]["json"] = (
+        "### Account/deployment request totals (not subscription/model rollups)\n"
+        "Separate selected-account/deployment totals, including failures. "
+        "Use Inference Health for status-code breakdowns."
+    )
+    metric_labels = [
+        ("InputTokens", "Input tokens"), ("OutputTokens", "Output tokens"),
+        ("TotalTokens", "Total tokens"), ("ModelRequests", "Requests"),
+    ]
+    formatters = [dict(columnMatch=name, formatter=5) for name in ("Name", "Segment")]
+    labels = [dict(columnId="Subscription", label="Subscription / model / account")]
+    for metric, label in metric_labels:
+        key = f"microsoft.cognitiveservices/accounts--{metric}"
+        formatters.extend([
+            dict(columnMatch=key, formatter=1, formatOptions=dict(aggregation="Sum")),
+            dict(columnMatch=f"{key} Timeline", formatter=5),
+        ])
+        labels.append(dict(columnId=key, label=label))
+    totals = dict(type=10, name="subscription-model-totals", content=dict(
+        chartId="model-fleet-subscription-model-totals", version="MetricsItem/2.0",
+        size=0, chartType=0, gridFormatType=2, resourceLimit=10000,
+        showExpandCollapseGrid=True, resourceIds=["{FoundryResources}"],
+        resourceType="microsoft.cognitiveservices/accounts",
+        timeContextFromParameter="TimeRange",
+        metrics=[dict(namespace="microsoft.cognitiveservices/accounts",
+                      metric=f"microsoft.cognitiveservices/accounts--{metric}",
+                      aggregation=1, splitBy=["ModelName"], splitByLimit=1000)
+                 for metric, _ in metric_labels],
+        gridSettings=dict(
+            hierarchySettings=dict(treeType=1, groupBy=["Subscription", "Segment"],
+                                   expandTopLevel=True, finalBy="Name"),
+            formatters=formatters, labelSettings=labels, rowLimit=10000),
+    ))
+    detail = by_name["detail-scope"]
+    workbook["items"].remove(detail)
+    index = workbook["items"].index(by_name["trend-label"])
+    workbook["items"][index:index] = [
+        text("model-totals-label", "### Combined subscription/model totals\n"
+             "Input/output/total-token and request totals for the selected range. "
+             "Subscription IDs are grouping keys, so identically named models in different "
+             "subscriptions stay separate. Subscriptions also show an all-model subtotal. "
+             "Blank cells remain unavailable, not measured zero. Grouped trend columns are "
+             "intentionally disabled to preserve missing-versus-zero semantics."),
+        totals,
+    ]
+    index = workbook["items"].index(by_name["token-trend"]) + 1
+    workbook["items"][index:index] = [
+        text("request-trend-label", "### Account/deployment request trends (not subscription/model rollups)\n"
+             "Separate resource/deployment series, summed within each interval, including failures. "
+             "These are not combined subscription/model trends. Missing samples are not measured zero."),
+        dict(type=10, name="request-trend", content=dict(
+            chartId="model-fleet-request-trend", version="MetricsItem/2.0", size=0,
+            chartType=2, title="Account/deployment request trends",
+            resourceIds=["{FoundryResources}"],
+            resourceType="microsoft.cognitiveservices/accounts",
+            timeContextFromParameter="TimeRange",
+            metrics=[dict(namespace="microsoft.cognitiveservices/accounts",
+                          metric="microsoft.cognitiveservices/accounts--ModelRequests",
+                          aggregation=1, splitBy="ModelDeploymentName", splitByLimit=1000)])),
+    ]
+    workbook["items"].insert(workbook["items"].index(by_name["mix-label"]), detail)
     return workbook
 
 
@@ -265,6 +365,8 @@ def main():
         path = ROOT / "workbooks" / f"{name}.workbook.json"
         workbook = capacity_workbook() if name == "model-capacity" else apply_scope(
             json.loads(path.read_text(encoding="utf-8")))
+        if name == "model-fleet":
+            workbook = fleet_workbook(workbook)
         path.write_text(json.dumps(workbook, indent=2) + "\n", encoding="utf-8")
 
 

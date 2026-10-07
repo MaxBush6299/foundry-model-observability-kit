@@ -18,8 +18,8 @@ References checked: 2026-10-07.
 
 | Metric | Unit | Aggregation used | Deployment split |
 | --- | --- | --- | --- |
-| `ModelRequests` | Count | Total | `ModelDeploymentName` (also `StatusCode` in Inference Health) |
-| `InputTokens`, `OutputTokens`, `TotalTokens` | Count | Total | `ModelDeploymentName` |
+| `ModelRequests` | Count | Total | `ModelName` in Fleet rollups; `ModelDeploymentName` in trends/detail (also `StatusCode` in Inference Health) |
+| `InputTokens`, `OutputTokens`, `TotalTokens` | Count | Total | `ModelName` in Fleet rollups; `ModelDeploymentName` in trends/detail |
 | `ModelAvailabilityRate` | Percent | Average, Minimum | `ModelDeploymentName` |
 | `TimeToResponse` | Milliseconds | Average, Maximum | `ModelDeploymentName` |
 | `AzureOpenAITimeToResponse` | Milliseconds | Average, Maximum | `ModelDeploymentName` |
@@ -34,6 +34,12 @@ Requests include unsuccessful responses. Availability is `(total calls - server 
 Time to response is a gateway-side first-response signal and excludes client latency. `TimeToResponse` is documented for PTU/PTU-managed models; `AzureOpenAITimeToResponse` additionally supports Azure OpenAI pay-as-you-go workloads. Neither is total completion duration or p95. Do not use the generic Cognitive Services `Latency` metric for Azure OpenAI.
 
 Metric availability varies by model/provider. Missing fields and samples must remain blank: they are not measured zeroes or evidence of 100% availability. The workbooks do not require or query diagnostic log tables.
+
+## Fleet rollup semantics
+
+The native metrics table uses `gridFormatType=2` with `ModelName` splits. Azure Monitor combines deployments sharing a model within each account; the workbook hierarchy groups the resulting account/model rows by full `Subscription` resource ID and `Segment` (the reported model name). Number formatters explicitly use `aggregation: "Sum"` to combine selected accounts. Model versions with the same name are intentionally combined. Expandable account rows preserve provenance; identical model/deployment labels never act as subscription keys.
+
+This follows the supported native metrics hierarchy/aggregation pattern in the [official Cosmos DB Fleet workbook](https://github.com/microsoft/Application-Insights-Workbooks/blob/master/Workbooks/CosmosDb%20Fleet/Overview.workbook). Actual portal fixture tests confirmed scalar sums, subscription isolation, blank all-missing output, and measured zero. They also exposed that grouped Sum sparklines replace all-missing buckets with zero, so all rollup timeline columns are hidden and have no Sum formatter. Separate, explicitly labeled account/deployment trends remain unaggregated across resources.
 
 ## Capacity response and chart semantics
 
