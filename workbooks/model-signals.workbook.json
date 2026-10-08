@@ -148,7 +148,7 @@
           },
           {
             "namespace": "microsoft.cognitiveservices/accounts",
-            "metric": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+            "metric": "microsoft.cognitiveservices/accounts--TimeToResponse",
             "aggregation": 4,
             "splitByLimit": 1000
           }
@@ -191,11 +191,11 @@
               "formatter": 5
             },
             {
-              "columnMatch": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+              "columnMatch": "microsoft.cognitiveservices/accounts--TimeToResponse",
               "formatter": 1
             },
             {
-              "columnMatch": "microsoft.cognitiveservices/accounts--{LatencyMetric} Timeline",
+              "columnMatch": "microsoft.cognitiveservices/accounts--TimeToResponse Timeline",
               "formatter": 5
             }
           ],
@@ -217,13 +217,132 @@
               "label": "Reported availability (%)"
             },
             {
-              "columnId": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+              "columnId": "microsoft.cognitiveservices/accounts--TimeToResponse",
               "label": "First-response latency (ms)"
             }
           ],
           "rowLimit": 10000,
           "filter": true
         }
+      },
+      "conditionalVisibility": {
+        "parameterName": "LatencyMetric",
+        "comparison": "isEqualTo",
+        "value": "TimeToResponse"
+      }
+    },
+    {
+      "type": 10,
+      "name": "resource-comparison-openai",
+      "content": {
+        "version": "MetricsItem/2.0",
+        "chartId": "admin-resource-comparison-openai",
+        "size": 0,
+        "chartType": 0,
+        "gridFormatType": 2,
+        "resourceLimit": 10000,
+        "resourceIds": [
+          "{FoundryResources}"
+        ],
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "timeContextFromParameter": "TimeRange",
+        "timeGrain": "FULL",
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelRequests",
+            "aggregation": 1,
+            "splitByLimit": 1000
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+            "aggregation": 4,
+            "splitByLimit": 1000
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--AzureOpenAITimeToResponse",
+            "aggregation": 4,
+            "splitByLimit": 1000
+          }
+        ],
+        "title": "Resource Comparison",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Name",
+              "formatter": 13,
+              "formatOptions": {
+                "showIcon": false
+              }
+            },
+            {
+              "columnMatch": "Subscription",
+              "formatter": 13,
+              "formatOptions": {
+                "showIcon": false
+              }
+            },
+            {
+              "columnMatch": "Segment",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--AzureOpenAITimeToResponse",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--AzureOpenAITimeToResponse Timeline",
+              "formatter": 5
+            }
+          ],
+          "labelSettings": [
+            {
+              "columnId": "Subscription",
+              "label": "Subscription"
+            },
+            {
+              "columnId": "Name",
+              "label": "Resource"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "label": "Requests"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+              "label": "Reported availability (%)"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--AzureOpenAITimeToResponse",
+              "label": "First-response latency (ms)"
+            }
+          ],
+          "rowLimit": 10000,
+          "filter": true
+        }
+      },
+      "conditionalVisibility": {
+        "parameterName": "LatencyMetric",
+        "comparison": "isEqualTo",
+        "value": "AzureOpenAITimeToResponse"
       }
     },
     {
@@ -270,7 +389,7 @@
           },
           {
             "namespace": "microsoft.cognitiveservices/accounts",
-            "metric": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+            "metric": "microsoft.cognitiveservices/accounts--TimeToResponse",
             "aggregation": 4,
             "splitByLimit": 1000,
             "splitBy": [
@@ -312,11 +431,11 @@
               "formatter": 5
             },
             {
-              "columnMatch": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+              "columnMatch": "microsoft.cognitiveservices/accounts--TimeToResponse",
               "formatter": 1
             },
             {
-              "columnMatch": "microsoft.cognitiveservices/accounts--{LatencyMetric} Timeline",
+              "columnMatch": "microsoft.cognitiveservices/accounts--TimeToResponse Timeline",
               "formatter": 5
             }
           ],
@@ -342,13 +461,141 @@
               "label": "Reported availability (%)"
             },
             {
-              "columnId": "microsoft.cognitiveservices/accounts--{LatencyMetric}",
+              "columnId": "microsoft.cognitiveservices/accounts--TimeToResponse",
               "label": "First-response latency (ms)"
             }
           ],
           "rowLimit": 10000,
           "filter": true
         }
+      },
+      "conditionalVisibility": {
+        "parameterName": "LatencyMetric",
+        "comparison": "isEqualTo",
+        "value": "TimeToResponse"
+      }
+    },
+    {
+      "type": 10,
+      "name": "deployment-comparison-openai",
+      "content": {
+        "version": "MetricsItem/2.0",
+        "chartId": "admin-deployment-comparison-openai",
+        "size": 0,
+        "chartType": 0,
+        "gridFormatType": 2,
+        "resourceLimit": 10000,
+        "resourceIds": [
+          "{FoundryResources}"
+        ],
+        "resourceType": "microsoft.cognitiveservices/accounts",
+        "timeContextFromParameter": "TimeRange",
+        "timeGrain": "FULL",
+        "metrics": [
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelRequests",
+            "aggregation": 1,
+            "splitByLimit": 1000,
+            "splitBy": [
+              "ModelDeploymentName"
+            ]
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+            "aggregation": 4,
+            "splitByLimit": 1000,
+            "splitBy": [
+              "ModelDeploymentName"
+            ]
+          },
+          {
+            "namespace": "microsoft.cognitiveservices/accounts",
+            "metric": "microsoft.cognitiveservices/accounts--AzureOpenAITimeToResponse",
+            "aggregation": 4,
+            "splitByLimit": 1000,
+            "splitBy": [
+              "ModelDeploymentName"
+            ]
+          }
+        ],
+        "title": "Deployment Comparison",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Name",
+              "formatter": 13,
+              "formatOptions": {
+                "showIcon": false
+              }
+            },
+            {
+              "columnMatch": "Subscription",
+              "formatter": 13,
+              "formatOptions": {
+                "showIcon": false
+              }
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelRequests Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate Timeline",
+              "formatter": 5
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--AzureOpenAITimeToResponse",
+              "formatter": 1
+            },
+            {
+              "columnMatch": "microsoft.cognitiveservices/accounts--AzureOpenAITimeToResponse Timeline",
+              "formatter": 5
+            }
+          ],
+          "labelSettings": [
+            {
+              "columnId": "Subscription",
+              "label": "Subscription"
+            },
+            {
+              "columnId": "Name",
+              "label": "Resource"
+            },
+            {
+              "columnId": "Segment",
+              "label": "Deployment"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--ModelRequests",
+              "label": "Requests"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--ModelAvailabilityRate",
+              "label": "Reported availability (%)"
+            },
+            {
+              "columnId": "microsoft.cognitiveservices/accounts--AzureOpenAITimeToResponse",
+              "label": "First-response latency (ms)"
+            }
+          ],
+          "rowLimit": 10000,
+          "filter": true
+        }
+      },
+      "conditionalVisibility": {
+        "parameterName": "LatencyMetric",
+        "comparison": "isEqualTo",
+        "value": "AzureOpenAITimeToResponse"
       }
     },
     {

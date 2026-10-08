@@ -195,8 +195,6 @@ def admin_layout(workbook):
     operational = [("ModelRequests", 1, "Requests"),
                    ("ModelAvailabilityRate", 4, "Reported availability (%)"),
                    ("TimeToResponse", 4, "First-response latency (ms)")]
-    if signals:
-        operational[-1] = ("{LatencyMetric}", 4, "First-response latency (ms)")
     comparison = metric_grid("resource-comparison",
                              totals if fleet else totals[2:] if capacity else operational)
     generated = [
@@ -220,6 +218,22 @@ def admin_layout(workbook):
         generated.append(metric_grid(
             "status-comparison", [("ModelRequests", 1, "Requests by HTTP status")],
             ["ModelDeploymentName", "StatusCode"]))
+    if signals:
+        for name in ("resource-comparison", "deployment-comparison"):
+            item = next(i for i in generated if i["name"] == name)
+            item["conditionalVisibility"] = dict(
+                parameterName="LatencyMetric", comparison="isEqualTo",
+                value="TimeToResponse")
+            alternative = metric_grid(
+                name + "-openai",
+                operational[:-1] + [("AzureOpenAITimeToResponse", 4,
+                                     "First-response latency (ms)")],
+                ["ModelDeploymentName"] if name == "deployment-comparison" else None)
+            alternative["content"]["title"] = item["content"]["title"]
+            alternative["conditionalVisibility"] = dict(
+                parameterName="LatencyMetric", comparison="isEqualTo",
+                value="AzureOpenAITimeToResponse")
+            generated.insert(generated.index(item) + 1, alternative)
     if capacity:
         generated.extend([
             text("capacity-comparison-label", "### Deployment capacity comparison\n"
@@ -248,7 +262,9 @@ def admin_layout(workbook):
         by_name["requests"]["content"]["title"] = "Requests by deployment"
         by_name["requests-label"]["content"]["json"] = (
             "### Requests by deployment\nSelected investigation resource only, including "
-            "failures. The estate overview above is unchanged.")
+            "failures. The estate overview above is unchanged. A resource row with blank "
+            "deployment and Requests means no reported series, not measured zero. "
+            "Selected-resource query coverage distinguishes Success/0 series from query errors.")
     if fleet and "request-trend" in by_name:
         by_name["request-trend"]["content"]["title"] = "Request trends by resource"
         by_name["request-trend-label"]["content"]["json"] = (
@@ -331,7 +347,9 @@ def admin_layout(workbook):
 def fleet_workbook(workbook):
     workbook = apply_scope(workbook)
     generated_names = {"model-totals-label", "subscription-model-totals",
-                       "request-trend-label", "request-trend"}
+                       "request-trend-label", "request-trend",
+                       "token-input-source", "token-output-source",
+                       "detail-selection-required"}
     workbook["items"] = [item for item in workbook["items"]
                          if item["name"] not in generated_names]
     by_name = {item["name"]: item for item in workbook["items"]}
@@ -352,15 +370,29 @@ def fleet_workbook(workbook):
     by_name["mix-label"]["content"]["json"] = (
         "### Tokens by deployment\n"
         "Input and output totals for **Investigate resource** only. Blank output means no reported "
-        "output tokens; embeddings commonly report input only. For charges, use Azure Cost Analysis."
+        "output tokens; embeddings commonly report input only. A resource row with blank "
+        "deployment/values means no reported series, not zero tokens. "
+        "Check selected-resource query coverage for errors and series counts. "
+        "For charges, use Azure Cost Analysis."
     )
-    by_name["token-mix"]["conditionalVisibility"] = dict(
-        parameterName="FoundryResource", comparison="isNotEqualTo", value="")
-    by_name["requests-label"]["content"]["json"] = (
-        "### Requests by deployment\n"
-        "Selected investigation resource only, including failures. "
-        "The estate comparison above is unchanged."
-    )
+    for name, metrics, title in (
+            ("token-mix", [("InputTokens", 1, "Input tokens"),
+                           ("OutputTokens", 1, "Output tokens")], "Tokens by deployment"),
+            ("requests", [("ModelRequests", 1, "Requests")], "Requests by deployment")):
+        item = metric_grid(name, metrics, ["ModelDeploymentName"])
+        item["content"]["resourceIds"] = ["{FoundryResource}"]
+        item["content"]["title"] = title
+        item["conditionalVisibility"] = dict(
+            parameterName="FoundryResource", comparison="isNotEqualTo", value="")
+        old = by_name[name]
+        workbook["items"][workbook["items"].index(old)] = item
+        by_name[name] = item
+    prompt = text("detail-selection-required",
+                  "**Select an Investigate resource** to load deployment tokens, requests "
+                  "and query coverage. The selection can clear when comparison scope changes. "
+                  "While resource discovery is loading, these details are unavailable.")
+    prompt["conditionalVisibility"] = dict(
+        parameterName="FoundryResource", comparison="isEqualTo", value="")
     metric_labels = [
         ("InputTokens", "Input tokens"), ("OutputTokens", "Output tokens"),
         ("TotalTokens", "Total tokens"), ("ModelRequests", "Requests"),
@@ -420,7 +452,16 @@ def fleet_workbook(workbook):
                           aggregation=1, splitBy="ModelDeploymentName", splitByLimit=1000)])),
     ]
     workbook["items"].insert(workbook["items"].index(by_name["mix-label"]), detail)
-    return admin_layout(workbook)
+    workbook = admin_layout(workbook)
+    by_name = {i["name"]: i for i in workbook["items"]}
+    coverage = by_name["metric-response-status"]
+    coverage["conditionalVisibility"] = dict(
+        parameterName="FoundryResource", comparison="isNotEqualTo", value="")
+    coverage["content"]["noDataMessage"] = (
+        "The metrics response contained no metric records. Check query errors; "
+        "this is not proof of zero traffic.")
+    workbook["items"].insert(workbook["items"].index(by_name["detail-scope"]) + 1, prompt)
+    return workbook
 
 
 def limit_parameter(name, key, field):

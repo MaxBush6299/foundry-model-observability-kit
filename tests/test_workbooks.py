@@ -16,9 +16,15 @@ def extract(spec, payload):
     transform = json.loads(spec)["transformers"][0]["settings"]
     if not transform["columns"]:
         return [row.value for row in parse(transform["tablePath"]).find(payload)]
+
+    def field(path, row):
+        if path.endswith(".length"):
+            parent = next((hit.value for hit in parse(path[:-7]).find(row)), None)
+            return len(parent) if isinstance(parent, list) else None
+        return next((hit.value for hit in parse(path).find(row)), None)
+
     return [
-        {col["columnid"]: next(
-            (hit.value for hit in parse(col["path"]).find(row.value)), None)
+        {col["columnid"]: field(col["path"], row.value)
          for col in transform["columns"]}
         for row in parse(transform["tablePath"]).find(payload)
     ]
@@ -99,7 +105,7 @@ class WorkbookTests(unittest.TestCase):
                 self.assertNotIn("{Deployment}", json.dumps(i))
 
     def test_shipped_wildcard_rest_queries_explicitly_request_1000_series(self):
-        required = {"token-input-source", "token-output-source", "status-by-deployment"}
+        required = {"status-by-deployment", "metric-response-status"}
         found = set()
         for book in self.books.values():
             for item in book["items"]:
@@ -112,15 +118,79 @@ class WorkbookTests(unittest.TestCase):
                     found.add(item["name"])
         self.assertTrue(required <= found)
 
-    def test_fleet_cached_token_merge_is_hidden_without_investigation_resource(self):
+    def test_fleet_token_detail_is_hidden_without_investigation_resource(self):
         fleet = self.books["model-fleet.workbook"]
         merge = next(i for i in fleet["items"] if i["name"] == "token-mix")
         self.assertEqual({"parameterName": "FoundryResource", "comparison": "isNotEqualTo",
                           "value": ""}, merge["conditionalVisibility"])
-        spec = json.loads(merge["content"]["query"])
-        self.assertEqual("leftouter", spec["merges"][0]["mergeType"])
-        self.assertEqual("token-input-source", spec["merges"][0]["leftTable"])
-        self.assertEqual("token-output-source", spec["merges"][0]["rightTable"])
+
+    def test_fleet_token_detail_does_not_join_schema_less_empty_rest_tables(self):
+        items = {i["name"]: i for i in self.books["model-fleet.workbook"]["items"]}
+        tokens = items["token-mix"]
+        self.assertEqual(10, tokens["type"])
+        content = tokens["content"]
+        self.assertEqual(["{FoundryResource}"], content["resourceIds"])
+        self.assertEqual("FULL", content["timeGrain"])
+        self.assertEqual(
+            ["microsoft.cognitiveservices/accounts--InputTokens",
+             "microsoft.cognitiveservices/accounts--OutputTokens"],
+            [m["metric"] for m in content["metrics"]])
+        self.assertTrue(all(m["splitBy"] == ["ModelDeploymentName"]
+                            and m["aggregation"] == 1 for m in content["metrics"]))
+        self.assertFalse({"token-input-source", "token-output-source"} & items.keys())
+
+    def test_signals_comparisons_bind_static_metric_ids_for_each_latency_selection(self):
+        signals = self.books["model-signals.workbook"]
+        for name in ("resource-comparison", "deployment-comparison"):
+            alternatives = [i for i in signals["items"]
+                            if i["name"] in (name, name + "-openai")]
+            self.assertEqual(2, len(alternatives))
+            for item, latency in zip(alternatives,
+                                     ("TimeToResponse", "AzureOpenAITimeToResponse")):
+                self.assertEqual(
+                    {"parameterName": "LatencyMetric", "comparison": "isEqualTo",
+                     "value": latency}, item["conditionalVisibility"])
+                self.assertEqual(
+                    ["ModelRequests", "ModelAvailabilityRate", latency],
+                    [m["metric"].split("--")[1] for m in item["content"]["metrics"]])
+                self.assertNotIn("{LatencyMetric}", json.dumps(item["content"]))
+                self.assertEqual(["{FoundryResources}"], item["content"]["resourceIds"])
+
+    def test_fleet_unset_detail_has_prompt_instead_of_blank_coverage(self):
+        items = {i["name"]: i for i in self.books["model-fleet.workbook"]["items"]}
+        self.assertIn("detail-selection-required", items)
+        prompt = items["detail-selection-required"]
+        self.assertEqual(
+            {"parameterName": "FoundryResource", "comparison": "isEqualTo", "value": ""},
+            prompt["conditionalVisibility"])
+        self.assertIn("Investigate resource", prompt["content"]["json"])
+        for name in ("token-mix", "requests", "metric-response-status"):
+            self.assertEqual(
+                {"parameterName": "FoundryResource", "comparison": "isNotEqualTo",
+                 "value": ""}, items[name]["conditionalVisibility"])
+        requests = items["requests"]["content"]
+        self.assertEqual("FULL", requests["timeGrain"])
+        self.assertEqual(2, requests["gridFormatType"])
+
+    def test_fleet_coverage_distinguishes_successful_empty_series_and_metric_errors(self):
+        items = {i["name"]: i for i in self.books["model-fleet.workbook"]["items"]}
+        spec = items["metric-response-status"]["content"]["query"]
+        fixtures = json.loads((builder.ROOT / "tests" / "fixtures" /
+                               "fleet-detail-responses.json").read_text())
+        self.assertEqual([
+            {"Metric": metric, "Metric result": "Success", "Metric error": None,
+             "Series returned": 0}
+            for metric in ("InputTokens", "OutputTokens", "ModelRequests")
+        ], extract(spec, fixtures["empty"]))
+        self.assertEqual([
+            {"Metric": "InputTokens", "Metric result": "ServerBusy",
+             "Metric error": "Metric query is temporarily unavailable.",
+             "Series returned": 0}
+        ], extract(spec, fixtures["metric_error"]))
+        self.assertEqual([], extract(spec, fixtures["no_records"]))
+        self.assertIn("noDataMessage", items["metric-response-status"]["content"])
+        self.assertEqual([2, 2, 0], [row["Series returned"]
+                                    for row in extract(spec, fixtures["asymmetric"])])
 
     def test_unavailable_limits_select_charts_without_thresholds(self):
         items = {i["name"]: i for i in self.capacity["items"]}
@@ -378,7 +448,7 @@ class WorkbookTests(unittest.TestCase):
             self.assertIn(expected, by_name[name]["content"]["title"])
         names = list(by_name)
         self.assertLess(names.index("subscription-model-totals"), names.index("token-trend"))
-        self.assertTrue({"token-input-source", "token-output-source", "token-mix", "requests"}
+        self.assertTrue({"token-mix", "requests", "metric-response-status"}
                         <= set(by_name))
 
     def test_fleet_friendly_labels_are_display_only_with_full_id_leaf_keys(self):

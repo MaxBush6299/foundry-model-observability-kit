@@ -1,6 +1,6 @@
 # Metric Sources and Semantics
 
-References checked: 2026-10-07.
+References checked: 2026-10-08.
 
 ## Official references
 
@@ -28,9 +28,11 @@ References checked: 2026-10-07.
 
 Native metric charts use workbook aggregation codes `1` (Total) and `4` (Average). Summary tables call the account's metrics REST endpoint with `interval=FULL` for the selected range and a wildcard deployment filter. Each summary row represents one deployment's reported values, not an individual request.
 
-All shipped wildcard REST metrics queries explicitly request `top=1000`, including Fleet's original token input/output sources and Health's deployment/status query. Native splits also request 1,000 series. The REST API defaults to ten when a filter is present, and its documented response has no pagination/completeness field. Requesting 1,000 is not proof of complete results: a count at the cap is suspicious, but fewer results do not prove tenant-wide completeness. Selected-resource response diagnostics expose metric error codes/messages and returned-series counts without converting failures to zero.
+All shipped wildcard REST metrics queries explicitly request `top=1000`, including selected-resource diagnostics and Health's deployment/status query. Native splits also request 1,000 series. The REST API defaults to ten when a filter is present, and its documented response has no pagination/completeness field. Requesting 1,000 is not proof of complete results: a count at the cap is suspicious, but fewer results do not prove tenant-wide completeness. Selected-resource response diagnostics expose metric error codes/messages and returned-series counts without converting failures to zero.
 
 Comparison grids use flat full-ID resource/deployment rows with `timeGrain=FULL` scalar results and hidden timeline columns. They have no cross-resource average hierarchy: availability and first-response averages are not averaged again into an estate SLO. Native resource/grid limits are 10,000; discovery result limits and interactive query fan-out can be reached earlier.
+
+Signals uses separate, conditionally visible native comparison grids for `TimeToResponse` and `AzureOpenAITimeToResponse`, following its existing detail-chart pattern. Native `MetricsItem/2.0` metric configuration does not substitute `{LatencyMetric}` embedded inside a metric ID: the provider looks up that literal name and fails. ARM query strings do substitute the parameter. Both native alternatives retain request/availability metrics and full resource/deployment keys; the picker selects the visible alternative, not an unsupported dynamic metric identifier. Missing or unsupported latency remains unavailable; real provider errors remain visible.
 
 Requests include unsuccessful responses. Availability is `(total calls - server errors) / total calls`, expressed as a percentage; server errors are HTTP 5xx. HTTP 4xx and throttling (429) do not reduce this signal. Average/minimum values are platform aggregates, not an independently calculated, request-weighted SLO.
 
@@ -39,6 +41,8 @@ Time to response is a gateway-side first-response signal and excludes client lat
 Metric availability varies by model/provider. Missing fields and samples must remain blank: they are not measured zeroes or evidence of 100% availability. The workbooks do not require or query diagnostic log tables.
 
 ## Fleet rollup semantics
+
+Selected-resource token detail uses a native metrics grid aligning actual input/output series by full resource ID and reported deployment name. The former JSONPath-plus-left-merge failed on quiet resources: a successful `timeseries: []` response became `columns: [], rows: []`, so Merge rejected the missing join column before evaluating the empty join. The native grid handles empty and asymmetric series without fabricating a deployment or zero row; it also retains output-only deployments that the old input-anchored join omitted. Embedding output stays blank and measured zero stays zero. A no-series resource can render an identity-only row with blank deployment/values; diagnostics report `Success` and a zero **series count**, not zero usage. Unset investigation hides dependent grids and explicitly prompts for a resource.
 
 The native metrics table uses `gridFormatType=2` with `ModelName` splits. Azure Monitor combines deployments sharing a model within each account; the workbook hierarchy groups the resulting account/model rows by full `Subscription` resource ID and `Segment` (the reported model name). Number formatters explicitly use `aggregation: "Sum"` to combine selected accounts. Model versions with the same name are intentionally combined. Expandable account rows preserve provenance; identical model/deployment labels never act as subscription keys.
 
