@@ -1,0 +1,36 @@
+{
+  "empty": {
+    "value": [
+      {"name": {"value": "InputTokens"}, "errorCode": "Success", "timeseries": []},
+      {"name": {"value": "OutputTokens"}, "errorCode": "Success", "timeseries": []},
+      {"name": {"value": "ModelRequests"}, "errorCode": "Success", "timeseries": []}
+    ]
+  },
+  "asymmetric": {
+    "value": [
+      {
+        "name": {"value": "InputTokens"},
+        "errorCode": "Success",
+        "timeseries": [
+          {"metadatavalues": [{"name": {"value": "modeldeploymentname"}, "value": "input-only"}], "data": [{"total": 11}]},
+          {"metadatavalues": [{"name": {"value": "modeldeploymentname"}, "value": "measured-zero"}], "data": [{"total": 0}]}
+        ]
+      },
+      {
+        "name": {"value": "OutputTokens"},
+        "errorCode": "Success",
+        "timeseries": [
+          {"metadatavalues": [{"name": {"value": "modeldeploymentname"}, "value": "output-only"}], "data": [{"total": 17}]},
+          {"metadatavalues": [{"name": {"value": "modeldeploymentname"}, "value": "measured-zero"}], "data": [{"total": 5}]}
+        ]
+      },
+      {"name": {"value": "ModelRequests"}, "errorCode": "Success", "timeseries": []}
+    ]
+  },
+  "metric_error": {
+    "value": [
+      {"name": {"value": "InputTokens"}, "errorCode": "ServerBusy", "errorMessage": "Metric query is temporarily unavailable.", "timeseries": []}
+    ]
+  },
+  "no_records": {"value": []}
+}

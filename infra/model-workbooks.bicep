@@ -19,6 +19,7 @@ param sharedViewerPrincipalObjectIds array = []
 param sharedViewerPrincipalType string = 'User'
 
 var readerRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'acdd72a7-3385-48ef-bd42-f606fba81ae7')
+var modelAccountSubscriptionId = split(modelAccountResourceId, '/')[2]
 
 resource modelFleetWorkbook 'Microsoft.Insights/workbooks@2022-04-01' = {
   name: guid(resourceGroup().id, 'model-fleet-workbook')
@@ -27,7 +28,7 @@ resource modelFleetWorkbook 'Microsoft.Insights/workbooks@2022-04-01' = {
   properties: {
     category: 'workbook'
     displayName: 'Foundry Model Fleet and Usage'
-    serializedData: replace(loadTextContent('../workbooks/model-fleet.workbook.json'), '__MODEL_ACCOUNT_RESOURCE_ID__', modelAccountResourceId)
+    serializedData: replace(replace(loadTextContent('../workbooks/model-fleet.workbook.json'), '__MODEL_ACCOUNT_RESOURCE_ID__', modelAccountResourceId), '__MODEL_ACCOUNT_SUBSCRIPTION_ID__', modelAccountSubscriptionId)
     sourceId: 'Azure Monitor'
     version: 'Workbook/1.0'
   }
@@ -40,7 +41,7 @@ resource modelHealthWorkbook 'Microsoft.Insights/workbooks@2022-04-01' = {
   properties: {
     category: 'workbook'
     displayName: 'Foundry Model Inference Health'
-    serializedData: replace(loadTextContent('../workbooks/model-health.workbook.json'), '__MODEL_ACCOUNT_RESOURCE_ID__', modelAccountResourceId)
+    serializedData: replace(replace(loadTextContent('../workbooks/model-health.workbook.json'), '__MODEL_ACCOUNT_RESOURCE_ID__', modelAccountResourceId), '__MODEL_ACCOUNT_SUBSCRIPTION_ID__', modelAccountSubscriptionId)
     sourceId: 'Azure Monitor'
     version: 'Workbook/1.0'
   }
@@ -53,11 +54,34 @@ resource modelSignalsWorkbook 'Microsoft.Insights/workbooks@2022-04-01' = {
   properties: {
     category: 'workbook'
     displayName: 'Foundry Model Volume, Latency and Availability'
-    serializedData: replace(loadTextContent('../workbooks/model-signals.workbook.json'), '__MODEL_ACCOUNT_RESOURCE_ID__', modelAccountResourceId)
+    serializedData: replace(replace(loadTextContent('../workbooks/model-signals.workbook.json'), '__MODEL_ACCOUNT_RESOURCE_ID__', modelAccountResourceId), '__MODEL_ACCOUNT_SUBSCRIPTION_ID__', modelAccountSubscriptionId)
     sourceId: 'Azure Monitor'
     version: 'Workbook/1.0'
   }
 }
+
+resource modelCapacityWorkbook 'Microsoft.Insights/workbooks@2022-04-01' = {
+  name: guid(resourceGroup().id, 'model-capacity-workbook')
+  location: location
+  kind: 'shared'
+  properties: {
+    category: 'workbook'
+    displayName: 'Foundry Model Usage vs Capacity'
+    serializedData: replace(replace(loadTextContent('../workbooks/model-capacity.workbook.json'), '__MODEL_ACCOUNT_RESOURCE_ID__', modelAccountResourceId), '__MODEL_ACCOUNT_SUBSCRIPTION_ID__', modelAccountSubscriptionId)
+    sourceId: 'Azure Monitor'
+    version: 'Workbook/1.0'
+  }
+}
+
+resource modelCapacityViewerAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for principalObjectId in sharedViewerPrincipalObjectIds: {
+  name: guid(modelCapacityWorkbook.id, principalObjectId, 'workbook-reader')
+  scope: modelCapacityWorkbook
+  properties: {
+    principalId: principalObjectId
+    roleDefinitionId: readerRoleDefinitionId
+    principalType: sharedViewerPrincipalType
+  }
+}]
 
 resource modelFleetViewerAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for principalObjectId in sharedViewerPrincipalObjectIds: {
   name: guid(modelFleetWorkbook.id, principalObjectId, 'workbook-reader')
@@ -82,6 +106,7 @@ resource modelHealthViewerAssignments 'Microsoft.Authorization/roleAssignments@2
 output modelFleetWorkbookResourceId string = modelFleetWorkbook.id
 output modelHealthWorkbookResourceId string = modelHealthWorkbook.id
 output modelSignalsWorkbookResourceId string = modelSignalsWorkbook.id
+output modelCapacityWorkbookResourceId string = modelCapacityWorkbook.id
 
 resource modelSignalsViewerAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for principalObjectId in sharedViewerPrincipalObjectIds: {
   name: guid(modelSignalsWorkbook.id, principalObjectId, 'workbook-reader')

@@ -43,3 +43,6 @@ venv/
 # ---------------------------------------------------------------------------
 *.log
 *.tmp
+
+# Local browser verification artifacts can contain account-specific URLs.
+.playwright-mcp/
